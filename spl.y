@@ -354,7 +354,7 @@ term :
                                                                             ;
 
 factor : 
-    name                                                                    { $$ = new FunctionCall($1); }                                            
+    name                                                                    { $$ = $1; }                                            
     |  name  LP  args_list  RP                                              { $$ = new FunctionCall($1, $3); }
     |  SYS_FUNCT                                                            { $$ = new SysFunctionCall($1); }
     |  SYS_FUNCT  LP  args_list  RP                                         { $$ = new SysFunctionCall($1, $3); }

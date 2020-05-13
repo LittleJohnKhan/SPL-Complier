@@ -23,3 +23,22 @@
     make
     cat ./test/test2.pas | spl
 ```
+
+## AST可视化
+
+由于使用了D3.js读取本地json，所以需要在服务器上才能读取，建议在VSCode中安装live Sever插件，然后在tree.html里右键，然后打开liveSever，这样就能看到了
+
+如果不想安这个插件的话，就只能自己配置一个html服务器了，可以用Apache做
+
+注意需要先运行程序生成tree.json
+
+## Reference
+
+[LLVM程序员手册](https://llvm.org/docs/ProgrammersManual.html#the-core-llvm-class-hierarchy-reference)
+[LLVM教程](https://releases.llvm.org/2.6/docs/tutorial/JITTutorial1.html)
+[GNU Pascal文档](https://www.gnu-pascal.de/gpc/Type-Declaration.html)
+[lex教程](https://my.oschina.net/zhoukuo/blog/330089/print)
+[flex+lex+llvm实例教程](http://www.cppblog.com/woaidongmao/archive/2009/11/11/100693.aspx)
+[上个教程的git仓库](https://github.com/lsegal/my_toy_compiler)
+[Pascal教程](https://www.kancloud.cn/yacker/pascaless/254516)
+[GNU lex教程](https://www.gnu.org/software/bison/manual/html_node/Token-Values.html)

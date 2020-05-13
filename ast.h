@@ -75,6 +75,9 @@ class Node
 {
 public:
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) = 0;
+    virtual string getJson() {
+
+    };
     virtual ~Node()
     {
     }
@@ -103,6 +106,7 @@ public:
     string getName() {
         return *name;
     }
+    virtual string getJson() override;
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
 private:
     string *name;
@@ -142,6 +146,8 @@ public:
         return new Integer(-value);
     }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+    
+    virtual string getJson() override;
 private:
     int value;
 };
@@ -166,6 +172,8 @@ public:
         return new Integer(-value);
     }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;
 private:
     double value;
 };
@@ -189,6 +197,8 @@ public:
         return new Integer(-value);
     }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;
 private:
     char value;
 };
@@ -212,6 +222,8 @@ public:
         return new Integer(!value);
     }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;
 private:
     bool value;
 };
@@ -223,20 +235,70 @@ public:
     {
     }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+    
+    virtual string getJson() override;
 private:
     Identifier *name;
     ConstValue *value;
 };
 
-class TypeDeclaration : public Statement {
+class EnumType : public Statement {
 public:
+    EnumType(NameList *nl) : enumList(nl) { }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
-    TypeDeclaration(Identifier *name, Type *type) : name(name), type(type) {
-
-    }
+    virtual string getJson() override;
 private:
-    Identifier *name;
+    NameList *enumList;
+};
+
+class ArrayType : public Statement {
+public:
+    ArrayType(Type *type, Type *range) : type(type), range(range) { }
+    virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+    virtual string getJson() override;
+private:
+    Type *range;
     Type *type;
+};
+
+class ConstRangeType : public Statement {
+public:
+    ConstRangeType(ConstValue *lowBound, ConstValue *upBound) : lowBound(lowBound), upBound(upBound) { }
+    virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+    virtual string getJson() override;
+private:
+    ConstValue *lowBound;
+    ConstValue *upBound;
+};
+
+class EnumRangeType : public Statement {
+public:
+    EnumRangeType(Identifier *lowBound, Identifier *upBound) : lowBound(lowBound), upBound(upBound) { }
+    virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+    virtual string getJson() override;
+private:
+    Identifier *lowBound;
+    Identifier *upBound;
+};
+
+class FieldDeclaration : public Statement {
+public:
+    FieldDeclaration(NameList *nameList, Type *td) : nameList(nameList), type(td) { }
+    virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+    virtual string getJson() override;
+private:
+    NameList *nameList;
+    Type *type;
+};
+
+class RecordType : public Statement {
+public:
+    RecordType(FieldList *fl) : fieldList(fl) { }
+    virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+    
+    virtual string getJson() override;
+private:
+    FieldList *fieldList;
 };
 
 // 类型
@@ -261,6 +323,8 @@ public:
     Type(Identifier *udt) : userDefineType(udt), type(SPL_USER_DEFINE) { }
     Type() : type(SPL_VOID) { }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;
 private:
     ArrayType *arrayType;
     RecordType *recordType;
@@ -272,62 +336,27 @@ private:
     TypeOfType type;
 };
 
-class EnumType : public Statement {
-public:
-    EnumType(NameList *nl) : enumList(nl) { }
-    virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
-private:
-    NameList *enumList;
-};
 
-class ArrayType : public Statement {
+class TypeDeclaration : public Statement {
 public:
-    ArrayType(Type *type, Type *range) : type(type), range(range) { }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+    TypeDeclaration(Identifier *name, Type *type) : name(name), type(type) {
+
+    }
+
+    virtual string getJson() override;
 private:
-    Type *range;
+    Identifier *name;
     Type *type;
 };
 
-class ConstRangeType : public Statement {
-public:
-    ConstRangeType(ConstValue *lowBound, ConstValue *upBound) : lowBound(lowBound), upBound(upBound) { }
-    virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
-private:
-    ConstValue *lowBound;
-    ConstValue *upBound;
-};
-
-class EnumRangeType : public Statement {
-public:
-    EnumRangeType(Identifier *lowBound, Identifier *upBound) : lowBound(lowBound), upBound(upBound) { }
-    virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
-private:
-    Identifier *lowBound;
-    Identifier *upBound;
-};
-
-class FieldDeclaration : public Statement {
-public:
-    FieldDeclaration(NameList *nameList, Type *td) : nameList(nameList), type(td) { }
-    virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
-private:
-    NameList *nameList;
-    Type *type;
-};
-
-class RecordType : public Statement {
-public:
-    RecordType(FieldList *fl) : fieldList(fl) { }
-    virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
-private:
-    FieldList *fieldList;
-};
 
 class VarDeclaration : public Statement {
 public:
     VarDeclaration(NameList *nl, Type *td) : nameList(nl), type(td) { }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;
 private:
     NameList *nameList;
     Type *type;
@@ -345,6 +374,8 @@ public:
     void setRoutine(Routine *routine) {
         subRoutine = routine;
     }
+
+    virtual string getJson() override;
 private:
     Identifier *name;
     ParaList *paraList;
@@ -359,6 +390,8 @@ public:
         this->type = type;
     }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;
 private:
     bool isVar;
     NameList *nameList;
@@ -373,6 +406,7 @@ public:
     }
     void setRoutineBody(CompoundStatement *routineBody) { this->routineBody = routineBody; }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+    virtual string getJson() override;
 private:
     ConstDeclList *constDeclList;
     VarDeclList *varDeclList;
@@ -385,6 +419,7 @@ class Program : public Node {
 public:
     Program(string *programID, Routine *routine) : programID(programID), routine(routine) { }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+    virtual string getJson() override;
 private:
     string *programID;
     Routine *routine;
@@ -396,6 +431,8 @@ public:
     AssignStatement(Identifier *lhs, Expression *sub, Expression *rhs) : lhs(lhs), sub(sub), rhs(rhs), type(ARRAY_ASSIGN) { }
     AssignStatement(Identifier *lhs, Identifier *field, Expression *rhs) : lhs(lhs), field(field), rhs(rhs), type(RECORD_ASSIGN) { }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+    
+    virtual string getJson() override;
 private:
     enum AssignType {
         ID_ASSIGN,
@@ -429,7 +466,10 @@ public:
     };
     BinaryExpression(Expression *lhs, BinaryOperator op, Expression *rhs) : lhs(lhs), op(op), rhs(rhs) {     }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;
 private:
+    vector<string> opString{"+", "-", "*", "/", ">=", ">", "<", "<=", "==", "!=", "or", "mod", "and", "xor"};
     Expression *lhs;
     Expression *rhs;
     BinaryOperator op;
@@ -439,6 +479,8 @@ class ArrayReference : public Expression {
 public:
     ArrayReference(Identifier *array, Expression *index) : array(array), index(index) { }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;
 private:
     Identifier *array;
     Expression *index;
@@ -448,6 +490,8 @@ class RecordReference : public Expression {
 public:
     RecordReference(Identifier *record, Identifier *field) : record(record), field(field) { }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;
 private:
     Identifier *record;
     Identifier *field;
@@ -458,6 +502,8 @@ public:
     FunctionCall(Identifier *name) : function(name), args(new ArgsList()) { }
     FunctionCall(Identifier *name, ArgsList *args) : function(name), args(args) { }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;
 private:
     Identifier *function;
     ArgsList *args;
@@ -468,6 +514,8 @@ public:
     ProcedureCall(Identifier *name) : function(name), args(new ArgsList()) { }
     ProcedureCall(Identifier *name, ArgsList *args) : function(name), args(args) { }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;
 private:
     Identifier *function;
     ArgsList *args;
@@ -475,9 +523,11 @@ private:
 
 class SysFunctionCall : public Expression, public Statement{
 public:
-    SysFunctionCall(string *name) : function(getFunction(name)) { }
-    SysFunctionCall(string *name, ArgsList *args) : function(getFunction(name)), args(args) { }
+    SysFunctionCall(string *name) : function(getFunction(name)), name(name) { }
+    SysFunctionCall(string *name, ArgsList *args) : function(getFunction(name)), args(args), name(name) { }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;
 private:
     enum SysFunction {
         SPL_ABS, 
@@ -513,16 +563,19 @@ private:
     }
     SysFunction function;
     ArgsList *args;
+    string *name;
 };
 
 class SysProcedureCall : public Statement {
 public:
-    SysProcedureCall(string *name) : procedure(getProcedure(name)) { }
-    SysProcedureCall(string *name, ArgsList *args) : procedure(getProcedure(name)), args(args) { }
-    SysProcedureCall(string *name, Expression *expr) : procedure(getProcedure(name)), args(new ArgsList()) {
+    SysProcedureCall(string *name) : procedure(getProcedure(name)), name(name) { }
+    SysProcedureCall(string *name, ArgsList *args) : procedure(getProcedure(name)), args(args), name(name) { }
+    SysProcedureCall(string *name, Expression *expr) : procedure(getProcedure(name)), args(new ArgsList()), name(name) {
         args->push_back(expr);
     }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;
 private:
     enum SysProcedure {
         SPL_WRITE,
@@ -543,6 +596,7 @@ private:
     }
     SysProcedure procedure;
     ArgsList *args;
+    string *name;
 };
 
 class IfStatement : public Statement {
@@ -552,9 +606,12 @@ public:
 
                                         }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;
 private:
     Expression *condition;
     Statement *thenStatement;
+    // elseStatement can be nullptr 你需要自己检测下是否是空指针
     Statement *elseStatement;
 };
 
@@ -564,6 +621,8 @@ public:
 
     }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+    
+    virtual string getJson() override;
 private:
     Expression *condition;
     StatementList *repeatStatement;
@@ -575,6 +634,8 @@ public:
 
     }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;
 private:
     Expression *condition;
     Statement *stmt;
@@ -587,6 +648,8 @@ public:
 
                                 }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;   
 private:
     Identifier *var;
     Expression *value;
@@ -600,6 +663,8 @@ class CaseStatement : public Statement {
 public:
     CaseStatement(Expression *value, CaseExprList *caseExprList) : value(value), caseExprList(caseExprList) { }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;
 private:
     Expression *value;
     CaseExprList *caseExprList;
@@ -609,6 +674,8 @@ class CaseExpression : public Statement {
 public:
     CaseExpression(Expression *value, Statement *stmt) : value(value), stmt(stmt) { }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;
 private:
     // 可以与CaseStatement中的变量建立EQUAL的BinaryStatment进行条件判断
     Expression *value;
@@ -619,6 +686,8 @@ class GotoStatement : public Statement {
 public:
     GotoStatement(int label) : label(label) { }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;
 private:
     int label;
 };
@@ -627,6 +696,8 @@ class CompoundStatement : public Statement {
 public:
     CompoundStatement(StatementList *stmtList) : stmtList(stmtList) { }
     virtual llvm::Value *codeGen(llvm::LLVMContext &context) override;
+
+    virtual string getJson() override;
 private:
     StatementList *stmtList;
 };

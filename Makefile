@@ -33,3 +33,4 @@ $(NAME): $(OBJS)
 clean:
 	-rm -f *.o
 	-rm -f parser.hpp parser.cpp tokenizer.cpp spl
+	-rm -f tree.json
