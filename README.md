@@ -23,7 +23,17 @@
     make
     cat ./test/test2.pas | spl
 ```
-
+## IR执行
+```bash
+    cat ./test/test.pas | spl 2> spl.ll
+    lli spl.ll
+```
+## DAG可视化
+需要Graphviz
+```bash
+    llvm-as < spl.ll | opt -analyze -view-cfg
+    dot *.dot -T png -o dag.png
+```
 ## AST可视化
 
 由于使用了D3.js读取本地json，所以需要在服务器上才能读取，建议在VSCode中安装live Sever插件，然后在tree.html里右键，然后打开liveSever，这样就能看到了
