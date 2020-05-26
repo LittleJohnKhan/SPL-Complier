@@ -11,7 +11,7 @@ CXXFLAGS = `$(LLVM_CONFIG) --cppflags` -std=c++11 $(NO_WARNING)
 LDFLAGS = `$(LLVM_CONFIG) --ldflags`
 LIBS = `$(LLVM_CONFIG) --libs --system-libs`
 
-OBJS = parser.o tokenizer.o ast.o main.o 
+OBJS = parser.o tokenizer.o ast.o  main.o CodeGenerator.o
 
 all : $(NAME)
 
@@ -23,7 +23,7 @@ parser.hpp: parser.cpp
 tokenizer.cpp: ${NAME}.l
 	flex -o tokenizer.cpp ${NAME}.l
 
-%.o: %.cpp ast.h CodeGenContext.h utils.h ccalc.h
+%.o: %.cpp ast.h CodeGenerator.h
 	g++ -c $(CXXFLAGS) -g -o $@ $< 
 
 $(NAME): $(OBJS)

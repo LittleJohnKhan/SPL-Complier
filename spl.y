@@ -32,9 +32,9 @@ Program *root;
     ConstDeclaration *constDeclaration;
     TypeDeclaration *typeDeclaration;
     VarDeclaration *varDeclaration;
-    Type *type;
+    AstType *type;
     EnumType *enumType;
-    ArrayType *arrayType;
+    AstArrayType *AstArrayType;
     RecordType  *recordType;
     ConstRangeType *constRangeType;
     EnumRangeType *enumRangeType;
@@ -188,28 +188,28 @@ type_decl :
 simple_type_decl : 
     SYS_TYPE                                                                {
                                                                                 if(*$1 == "integer")
-                                                                                    $$ = new Type(SPL_INTEGER);
+                                                                                    $$ = new AstType(SPL_INTEGER);
                                                                                 else if(*$1 == "boolean")
-                                                                                    $$ = new Type(SPL_BOOLEAN);
+                                                                                    $$ = new AstType(SPL_BOOLEAN);
                                                                                 else if(*$1 == "real")
-                                                                                    $$ = new Type(SPL_REAL);
+                                                                                    $$ = new AstType(SPL_REAL);
                                                                                 else if(*$1 == "char")
-                                                                                    $$ = new Type(SPL_CHAR);
+                                                                                    $$ = new AstType(SPL_CHAR);
                                                                                 else 
                                                                                     cout << "UNKNOWN SYS_TYPE" << endl;
                                                                             }
-    |  name                                                                 { $$ = new Type($1); }
-    |  LP  name_list  RP                                                    { $$ = new Type(new EnumType($2)); }
-    |  const_value  DOTDOT  const_value                                     { $$ = new Type(new ConstRangeType($1, $3)); }
-    |  MINUS  const_value  DOTDOT  const_value                              { $$ = new Type(new ConstRangeType(-*$2, -*$4)); }
-    |  MINUS  const_value  DOTDOT  MINUS  const_value                       { $$ = new Type(new ConstRangeType(-*$2, -*$5)); }
-    |  name  DOTDOT  name                                                   { $$ = new Type(new EnumRangeType($1, $3)); }
+    |  name                                                                 { $$ = new AstType($1); }
+    |  LP  name_list  RP                                                    { $$ = new AstType(new EnumType($2)); }
+    |  const_value  DOTDOT  const_value                                     { $$ = new AstType(new ConstRangeType($1, $3)); }
+    |  MINUS  const_value  DOTDOT  const_value                              { $$ = new AstType(new ConstRangeType(-*$2, $4)); }
+    |  MINUS  const_value  DOTDOT  MINUS  const_value                       { $$ = new AstType(new ConstRangeType(-*$2, -*$5)); }
+    |  name  DOTDOT  name                                                   { $$ = new AstType(new EnumRangeType($1, $3)); }
                                                                             ;
 
-array_type_decl : ARRAY  LB  simple_type_decl  RB  OF  type_decl            { $$ = new Type(new ArrayType($6, $3)); }
+array_type_decl : ARRAY  LB  simple_type_decl  RB  OF  type_decl            { $$ = new AstType(new AstArrayType($6, $3)); }
                                                                             ;
 
-record_type_decl : RECORD  field_decl_list  END                             { $$ = new Type(new RecordType($2)); }
+record_type_decl : RECORD  field_decl_list  END                             { $$ = new AstType(new RecordType($2)); }
                                                                             ;
 
 field_decl_list : 
