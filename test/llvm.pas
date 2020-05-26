@@ -1,11 +1,17 @@
 program llvm;
 var a, b, c: integer;
-procedure count(var b:integer);
+procedure count(b:integer);
 begin
     b:=1;
+    for b := 1 to 10 do
+    begin
+	b := b + 1;
+	writeln(b);
+    end;
 end;
 begin
     a:=1;
+    b := 0;
     while a<30 do begin
         a:=a+1;
         writeln(a);
@@ -18,6 +24,7 @@ begin
         b:=b+1;
         b:=b+1;
     end;
+    writeln(a, ' ', b);
     if ((b>30) and (b<100)) then 
         if (a<120) then writeln(a);
     a := 1;

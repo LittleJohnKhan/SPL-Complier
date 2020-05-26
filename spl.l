@@ -3,7 +3,7 @@
 #include "parser.hpp"
 #include <stdio.h>
 #include <string>
-extern "C" int yywrap() { }
+extern "C" int yywrap() {return 1;}
 %}
 
 %%

@@ -1,14 +1,21 @@
-#include "ast.h"
 #include <fstream>
-
-using namespace std;
-
+#include "CodeGenerator.h"
+#include "parser.hpp"
+#include "parser.hpp"
 extern int yyparse();
 extern Program *root;
 
 int main(int argc, char **argv) {
     yyparse();
-    ofstream os("tree.json");
-    os << root->getJson() << endl;
+    std::ofstream os("tree.json");
+    os << root->getJson() << std::endl;
+    
+    llvm::InitializeNativeTarget();
+    llvm::InitializeNativeTargetAsmPrinter();
+    llvm::InitializeNativeTargetAsmParser();
+    CodeGenerator generator;
+    generator.generate(*root);
+//    generator.run();
+    
     return 0;
 }
