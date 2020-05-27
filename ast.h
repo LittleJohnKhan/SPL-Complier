@@ -65,6 +65,7 @@ using StatementList = vector<Statement *>;
 using ArgsList = vector<Expression *>;
 using CaseExprList = vector<CaseExpression *>;
 
+// SPL 内置类型
 enum BuildInType
 {
     SPL_INTEGER,
@@ -73,27 +74,34 @@ enum BuildInType
     SPL_BOOLEAN
 };
 
+// AST 节点
 class Node
 {
 public:
+    // 用于llvm生成中间代码
     virtual llvm::Value *codeGen(CodeGenerator & generator) = 0;
+    // 用于生成AST可视化需要的Json数据
     virtual string getJson(){return "";};
     virtual ~Node()
     {
     }
 };
 
+// 表达式，特征是能返回值或能存储值
 class Expression : public Node
 {
 };
 
+// 语句，特征是能完成某些操作
 class Statement : public Node
 {
 public:
+    // 用于Goto语句设置标号
     void setLabel(int label)
     {
         this->label = label;
     }
+    // 用于得到Goto语句需要的标号，若不存在则返回-1
     int getLable() const
     {
         return label;
@@ -105,6 +113,7 @@ private:
     int label = -1;
 };
 
+// 标识符
 class Identifier : public Expression
 {
 public:
@@ -120,6 +129,7 @@ private:
     string *name;
 };
 
+// 常量
 class ConstValue : public Expression
 {
 public:
@@ -241,6 +251,7 @@ private:
     bool value;
 };
 
+// 常量声明语句
 class ConstDeclaration : public Statement
 {
 public:
@@ -264,7 +275,6 @@ private:
     ConstValue *value;
     AstType *type;
     bool globalFlag;
-    
 };
 
 class EnumType : public Statement {
