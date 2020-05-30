@@ -43,6 +43,18 @@ llvm::AllocaInst *CreateEntryBlockAlloca(llvm::Function *TheFunction, llvm::Stri
   return TmpB.CreateAlloca(type, nullptr, VarName);
 }
 
+llvm::Type* toLLVMPtrType(const BuildInType & type)
+{
+    switch (type)
+    {
+        case SPL_INTEGER: return llvm::Type::getInt32PtrTy(TheContext);
+        case SPL_REAL: return llvm::Type::getDoublePtrTy(TheContext);
+        case SPL_CHAR: return llvm::Type::getInt8PtrTy(TheContext);
+        case SPL_BOOLEAN: return llvm::Type::getInt1PtrTy(TheContext);
+        default: throw logic_error("Not supported pointer type.");
+    }
+}
+
 llvm::Type* AstType::toLLVMType()
 {
     switch (this->type)
@@ -356,7 +368,14 @@ llvm::Value *FuncDeclaration::codeGen(CodeGenerator & generator) {
     vector<llvm::Type*> argTypes;
     for (auto & argType : *(this->paraList))
     {
-        argTypes.insert(argTypes.end(), argType->nameList->size(), argType->getType()->toLLVMType());
+        if (argType->isVar)
+        {
+            argTypes.insert(argTypes.end(), argType->nameList->size(), toLLVMPtrType(argType->getType()->buildInType));
+        }
+        else
+        {
+            argTypes.insert(argTypes.end(), argType->nameList->size(), argType->getType()->toLLVMType());
+        }
     }
     llvm::FunctionType *funcType = llvm::FunctionType::get(this->returnType->toLLVMType(), argTypes, false);
     llvm::Function *function = llvm::Function::Create(funcType, llvm::GlobalValue::InternalLinkage, this->name->getName(), generator.TheModule.get());
@@ -368,6 +387,7 @@ llvm::Value *FuncDeclaration::codeGen(CodeGenerator & generator) {
     
     //Parameters
     llvm::Function::arg_iterator argIt =  function->arg_begin();
+    int index = 1;
     for (auto & args : *(this->paraList))
     {
         for (auto & arg : *(args->nameList))
@@ -376,13 +396,16 @@ llvm::Value *FuncDeclaration::codeGen(CodeGenerator & generator) {
             if (args->isVar)
             {
                 //Check value
-                alloc = generator.findValue(arg->getName());
+//                alloc = generator.findValue(arg->getName());
+                function->addAttribute(index, llvm::Attribute::NonNull);
+                alloc = TheBuilder.CreateGEP(argIt++, TheBuilder.getInt32(0), arg->getName());
             }
             else
             {
                 alloc = CreateEntryBlockAlloca(function, arg->getName(), args->type->toLLVMType());
+                TheBuilder.CreateStore(argIt++, alloc);
             }
-            TheBuilder.CreateStore(argIt++, alloc);
+            index++;
         }
     }
     
@@ -529,9 +552,21 @@ llvm::Value *FunctionCall::codeGen(CodeGenerator & generator) {
         throw domain_error("[ERROR] Function not defined: " + this->function->getName());
     }
     vector<llvm::Value*> args;
+    llvm::Function::arg_iterator argIt =  function->arg_begin();
     for (auto & arg : *(this->args))
     {
-        args.push_back(arg->codeGen(generator));
+        if (argIt->hasNonNullAttr())
+        {
+            cout << "Pass a pointer" << endl;
+            llvm::Value * addr = generator.findValue(dynamic_cast<Identifier*>(arg)->getName());
+            args.push_back(addr);
+        }
+        else
+        {
+            cout << "Pass a value" << endl;
+            args.push_back(arg->codeGen(generator));
+        }
+        argIt++;
     }
     llvm::Value *res = TheBuilder.CreateCall(function, args, "calltmp");
     this->backword();
@@ -547,9 +582,21 @@ llvm::Value *ProcedureCall::codeGen(CodeGenerator & generator) {
         throw domain_error("[ERROR] Function not defined: " + this->function->getName());
     }
     vector<llvm::Value*> args;
+    llvm::Function::arg_iterator argIt =  function->arg_begin();
     for (auto & arg : *(this->args))
     {
-        args.push_back(arg->codeGen(generator));
+        if (argIt->hasNonNullAttr())
+        {
+            cout << "Pass a pointer" << endl;
+            llvm::Value * addr = generator.findValue(dynamic_cast<Identifier*>(arg)->getName());
+            args.push_back(addr);
+        }
+        else
+        {
+            cout << "Pass a value" << endl;
+            args.push_back(arg->codeGen(generator));
+        }
+        argIt++;
     }
     llvm::Value* res = TheBuilder.CreateCall(function, args, "calltmp");
     this->backword();
