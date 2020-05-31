@@ -980,36 +980,627 @@ llvm::AllocaInst *CreateEntryBlockAlloca(llvm::Function *TheFunction, llvm::Stri
 - 测试代码
 
 ```pascal
+program buildInTypeTest;
+const
+	ic = 1;
+	rc = 1.5;
+	bc = false;
+	cc = 'a';
+var
+	iv : integer;
+	rv : real;
+	bv : boolean;
+	cv : char;
 
+begin
+    iv := 1;
+    rv := 99.9;
+    bv := true;
+    cv := 'a';
+    writeln(ic);
+    writeln(rc);
+    writeln(bc);
+    writeln(cc);
+    writeln(iv);
+    writeln(rv);
+    writeln(bv);
+    writeln(cv);
+end
+.
 ```
 
+- AST
+
+  ![a](./image/test/buildin.png)
+
+  
+
 - IR
+
+```asm
+; ModuleID = 'main'
+source_filename = "main
+
+@ic = constant i32 1
+@rc = constant double 1.500000e+00
+@bc = constant i1 false
+@cc = constant i8 97
+@iv = global i32 0
+@rv = global double 0.000000e+00
+@bv = global i1 false
+@cv = global i8 0
+@.str = constant [4 x i8] c"%d\0A\00"
+@.str.1 = constant [5 x i8] c"%lf\0A\00"
+@.str.2 = constant [4 x i8] c"%d\0A\00"
+@.str.3 = constant [4 x i8] c"%c\0A\00"
+@.str.4 = constant [4 x i8] c"%d\0A\00"
+@.str.5 = constant [5 x i8] c"%lf\0A\00"
+@.str.6 = constant [4 x i8] c"%d\0A\00"
+@.str.7 = constant [4 x i8] c"%c\0A\00"
+
+define internal void @main() {
+entrypoint:
+  store i32 1, i32* @iv
+  store double 9.990000e+01, double* @rv
+  store i1 true, i1* @bv
+  store i8 97, i8* @cv
+  %tmp = load i32, i32* @ic
+  %printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %tmp)
+  %tmp1 = load double, double* @rc
+  %printf2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.1, i32 0, i32 0), double %tmp1)
+  %tmp3 = load i1, i1* @bc
+  %printf4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.2, i32 0, i32 0), i1 %tmp3)
+  %tmp5 = load i8, i8* @cc
+  %printf6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.3, i32 0, i32 0), i8 %tmp5)
+  %tmp7 = load i32, i32* @iv
+  %printf8 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.4, i32 0, i32 0), i32 %tmp7)
+  %tmp9 = load double, double* @rv
+  %printf10 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.5, i32 0, i32 0), double %tmp9)
+  %tmp11 = load i1, i1* @bv
+  %printf12 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.6, i32 0, i32 0), i1 %tmp11)
+  %tmp13 = load i8, i8* @cv
+  %printf14 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.7, i32 0, i32 0), i8 %tmp13)
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+declare i32 @scanf(...)
+```
+
 - 汇编指令
+
+```masm
+	.section	__TEXT,__text,regular,pure_instructions
+	.macosx_version_min 10, 15
+	.p2align	4, 0x90         ## -- Begin function main
+_main:                                  ## @main
+	.cfi_startproc
+## %bb.0:                               ## %entrypoint
+	pushq	%rax
+	.cfi_def_cfa_offset 16
+	movl	$1, _iv(%rip)
+	movabsq	$4636730254480218522, %rax ## imm = 0x4058F9999999999A
+	movq	%rax, _rv(%rip)
+	movb	$1, _bv(%rip)
+	movb	$97, _cv(%rip)
+	movl	_ic(%rip), %esi
+	leaq	_.str(%rip), %rdi
+	xorl	%eax, %eax
+	callq	_printf
+	movsd	_rc(%rip), %xmm0        ## xmm0 = mem[0],zero
+	leaq	_.str.1(%rip), %rdi
+	movb	$1, %al
+	callq	_printf
+	leaq	_.str.2(%rip), %rdi
+	movzbl	_bc(%rip), %esi
+	xorl	%eax, %eax
+	callq	_printf
+	leaq	_.str.3(%rip), %rdi
+	movzbl	_cc(%rip), %esi
+	xorl	%eax, %eax
+	callq	_printf
+	movl	_iv(%rip), %esi
+	leaq	_.str.4(%rip), %rdi
+	xorl	%eax, %eax
+	callq	_printf
+	movsd	_rv(%rip), %xmm0        ## xmm0 = mem[0],zero
+	leaq	_.str.5(%rip), %rdi
+	movb	$1, %al
+	callq	_printf
+	movzbl	_bv(%rip), %esi
+	leaq	_.str.6(%rip), %rdi
+	xorl	%eax, %eax
+	callq	_printf
+	movzbl	_cv(%rip), %esi
+	leaq	_.str.7(%rip), %rdi
+	xorl	%eax, %eax
+	callq	_printf
+	popq	%rax
+	retq
+	.cfi_endproc
+                                        ## -- End function
+	.section	__TEXT,__const
+	.globl	_ic                     ## @ic
+	.p2align	2
+_ic:
+	.long	1                       ## 0x1
+
+	.globl	_rc                     ## @rc
+	.p2align	3
+_rc:
+	.quad	4609434218613702656     ## double 1.5
+
+	.globl	_bc                     ## @bc
+_bc:
+	.byte	0                       ## 0x0
+
+	.globl	_cc                     ## @cc
+_cc:
+	.byte	97                      ## 0x61
+
+	.globl	_iv                     ## @iv
+.zerofill __DATA,__common,_iv,4,2
+	.globl	_rv                     ## @rv
+.zerofill __DATA,__common,_rv,8,3
+	.globl	_bv                     ## @bv
+.zerofill __DATA,__common,_bv,1,0
+	.globl	_cv                     ## @cv
+.zerofill __DATA,__common,_cv,1,0
+	.globl	_.str                   ## @.str
+_.str:
+	.asciz	"%d"
+
+	.globl	_.str.1                 ## @.str.1
+_.str.1:
+	.asciz	"%lf"
+
+	.globl	_.str.2                 ## @.str.2
+_.str.2:
+	.asciz	"%d"
+
+	.globl	_.str.3                 ## @.str.3
+_.str.3:
+	.asciz	"%c"
+
+	.globl	_.str.4                 ## @.str.4
+_.str.4:
+	.asciz	"%d"
+
+	.globl	_.str.5                 ## @.str.5
+_.str.5:
+	.asciz	"%lf"
+
+	.globl	_.str.6                 ## @.str.6
+_.str.6:
+	.asciz	"%d"
+
+	.globl	_.str.7                 ## @.str.7
+_.str.7:
+	.asciz	"%c"
+
+
+.subsections_via_symbols
+```
+
 - 运行结果
+
+![a](./image/test/buildinresult.png)
 
 #### 6.1.2 数组类型测试
 
 - 测试代码
 
 ```pascal
+program ArrayTest;
+const
+	l = 1;
+	r = 6;
+var
+	iv : integer;
+	a : array[l..r] of integer;
+
+begin
+	iv := 0;  
+	for iv := l to r do
+	begin
+		a[iv] := iv;
+	end;
+	for iv := l to r do
+	begin
+		writeln(a[iv]);
+	end;
+end
+.
+```
+
+- AST
+
+![a](./image/test/2.png)
+
+- IR
+
+```asm
+; ModuleID = 'main'
+source_filename = "main"
+
+@l = constant i32 1
+@r = constant i32 6
+@iv = global i32 0
+@a = global [6 x i32] zeroinitializer
+@.str = constant [4 x i8] c"%d\0A\00"
+
+define internal void @main() {
+entrypoint:
+  %tmp = load i32, i32* @r
+  %tmp1 = load i32, i32* @l
+  store i32 0, i32* @iv
+  %tmp2 = load i32, i32* @l
+  %tmp3 = load i32, i32* @r
+  store i32 %tmp2, i32* @iv
+  br label %cond
+
+cond:                                             ; preds = %loop, %entrypoint
+  %tmp4 = load i32, i32* @iv
+  %0 = icmp sle i32 %tmp4, %tmp3
+  %forCond = icmp ne i1 %0, false
+  br i1 %forCond, label %loop, label %afterLoop
+
+loop:                                             ; preds = %cond
+  %tmp5 = load i32, i32* @iv
+  %tmp6 = load i32, i32* @iv
+  %subtmpi = sub i32 %tmp6, %tmp1
+  %1 = getelementptr inbounds [6 x i32], [6 x i32]* @a, i32 0, i32 %subtmpi
+  store i32 %tmp5, i32* %1
+  %2 = add i32 %tmp4, 1
+  store i32 %2, i32* @iv
+  br label %cond
+
+afterLoop:                                        ; preds = %cond
+  %tmp7 = load i32, i32* @l
+  %tmp8 = load i32, i32* @r
+  store i32 %tmp7, i32* @iv
+  br label %cond9
+
+cond9:                                            ; preds = %loop10, %afterLoop
+  %tmp12 = load i32, i32* @iv
+  %3 = icmp sle i32 %tmp12, %tmp8
+  %forCond13 = icmp ne i1 %3, false
+  br i1 %forCond13, label %loop10, label %afterLoop11
+
+loop10:                                           ; preds = %cond9
+  %tmp14 = load i32, i32* @iv
+  %subtmpi15 = sub i32 %tmp14, %tmp1
+  %4 = getelementptr inbounds [6 x i32], [6 x i32]* @a, i32 0, i32 %subtmpi15
+  %arrRef = load i32, i32* %4
+  %printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %arrRef)
+  %5 = add i32 %tmp12, 1
+  store i32 %5, i32* @iv
+  br label %cond9
+
+afterLoop11:                                      ; preds = %cond9
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+declare i32 @scanf(...)
 
 ```
 
-- IR
 - 汇编指令
+
+```asm
+	.section	__TEXT,__text,regular,pure_instructions
+	.macosx_version_min 10, 15
+	.p2align	4, 0x90         ## -- Begin function main
+_main:                                  ## @main
+	.cfi_startproc
+## %bb.0:                               ## %entrypoint
+	pushq	%rbp
+	.cfi_def_cfa_offset 16
+	pushq	%r15
+	.cfi_def_cfa_offset 24
+	pushq	%r14
+	.cfi_def_cfa_offset 32
+	pushq	%r12
+	.cfi_def_cfa_offset 40
+	pushq	%rbx
+	.cfi_def_cfa_offset 48
+	.cfi_offset %rbx, -48
+	.cfi_offset %r12, -40
+	.cfi_offset %r14, -32
+	.cfi_offset %r15, -24
+	.cfi_offset %rbp, -16
+	movl	_r(%rip), %r15d
+	movl	_l(%rip), %ebx
+	movl	%ebx, _iv(%rip)
+	leaq	_a(%rip), %r12
+	.p2align	4, 0x90
+LBB0_1:                                 ## %cond
+                                        ## =>This Inner Loop Header: Depth=1
+	movl	_iv(%rip), %eax
+	cmpl	%r15d, %eax
+	jg	LBB0_3
+## %bb.2:                               ## %loop
+                                        ##   in Loop: Header=BB0_1 Depth=1
+	movl	_iv(%rip), %ecx
+	movl	%ecx, %edx
+	subl	%ebx, %edx
+	movslq	%edx, %rdx
+	movl	%ecx, (%r12,%rdx,4)
+	incl	%eax
+	movl	%eax, _iv(%rip)
+	jmp	LBB0_1
+LBB0_3:                                 ## %afterLoop
+	movl	%ebx, _iv(%rip)
+	leaq	_.str(%rip), %r14
+	.p2align	4, 0x90
+LBB0_4:                                 ## %cond9
+                                        ## =>This Inner Loop Header: Depth=1
+	movl	_iv(%rip), %ebp
+	cmpl	%r15d, %ebp
+	jg	LBB0_6
+## %bb.5:                               ## %loop10
+                                        ##   in Loop: Header=BB0_4 Depth=1
+	movl	_iv(%rip), %eax
+	subl	%ebx, %eax
+	cltq
+	movl	(%r12,%rax,4), %esi
+	movq	%r14, %rdi
+	xorl	%eax, %eax
+	callq	_printf
+	incl	%ebp
+	movl	%ebp, _iv(%rip)
+	jmp	LBB0_4
+LBB0_6:                                 ## %afterLoop11
+	popq	%rbx
+	popq	%r12
+	popq	%r14
+	popq	%r15
+	popq	%rbp
+	retq
+	.cfi_endproc
+                                        ## -- End function
+	.section	__TEXT,__const
+	.globl	_l                      ## @l
+	.p2align	2
+_l:
+	.long	1                       ## 0x1
+
+	.globl	_r                      ## @r
+	.p2align	2
+_r:
+	.long	6                       ## 0x6
+
+	.globl	_iv                     ## @iv
+.zerofill __DATA,__common,_iv,4,2
+	.globl	_a                      ## @a
+.zerofill __DATA,__common,_a,24,4
+	.globl	_.str                   ## @.str
+_.str:
+	.asciz	"%d\n"
+
+
+.subsections_via_symbols
+
+```
+
 - 运行结果
+
+![a](./image/test/3.png)
 
 ### 6.2 运算测试
 
 - 测试代码
 
 ```pascal
+program ComputeTest;
+const
+	ic = 1;
+	rc = 1.5;
+    jc = 8;
+    kc = 3;
+begin
+    writeln(ic + ic);
+    writeln(rc + rc);
+    writeln(ic - ic);
+    writeln(rc - rc);
+    writeln(ic * ic);
+    writeln(rc * rc);
+    writeln(ic / (ic + 1));
+    writeln(jc mod kc);
+end
+.
 
 ```
 
+- AST
+
+  ![a](./image/test/4.png)
+
 - IR
+
+```asm
+; ModuleID = 'main'
+source_filename = "main"
+
+@ic = constant i32 1
+@rc = constant double 1.500000e+00
+@jc = constant i32 8
+@kc = constant i32 3
+@.str = constant [4 x i8] c"%d\0A\00"
+@.str.1 = constant [5 x i8] c"%lf\0A\00"
+@.str.2 = constant [4 x i8] c"%d\0A\00"
+@.str.3 = constant [5 x i8] c"%lf\0A\00"
+@.str.4 = constant [4 x i8] c"%d\0A\00"
+@.str.5 = constant [5 x i8] c"%lf\0A\00"
+@.str.6 = constant [4 x i8] c"%d\0A\00"
+@.str.7 = constant [4 x i8] c"%d\0A\00"
+
+define internal void @main() {
+entrypoint:
+  %tmp = load i32, i32* @ic
+  %tmp1 = load i32, i32* @ic
+  %addtmpi = add i32 %tmp, %tmp1
+  %printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %addtmpi)
+  %tmp2 = load double, double* @rc
+  %tmp3 = load double, double* @rc
+  %addtmpf = fadd double %tmp2, %tmp3
+  %printf4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.1, i32 0, i32 0), double %addtmpf)
+  %tmp5 = load i32, i32* @ic
+  %tmp6 = load i32, i32* @ic
+  %subtmpi = sub i32 %tmp5, %tmp6
+  %printf7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.2, i32 0, i32 0), i32 %subtmpi)
+  %tmp8 = load double, double* @rc
+  %tmp9 = load double, double* @rc
+  %subtmpf = fsub double %tmp8, %tmp9
+  %printf10 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.3, i32 0, i32 0), double %subtmpf)
+  %tmp11 = load i32, i32* @ic
+  %tmp12 = load i32, i32* @ic
+  %multmpi = mul i32 %tmp11, %tmp12
+  %printf13 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.4, i32 0, i32 0), i32 %multmpi)
+  %tmp14 = load double, double* @rc
+  %tmp15 = load double, double* @rc
+  %multmpf = fmul double %tmp14, %tmp15
+  %printf16 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.5, i32 0, i32 0), double %multmpf)
+  %tmp17 = load i32, i32* @ic
+  %tmp18 = load i32, i32* @ic
+  %addtmpi19 = add i32 %tmp18, 1
+  %tmpDiv = sdiv i32 %tmp17, %addtmpi19
+  %printf20 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.6, i32 0, i32 0), i32 %tmpDiv)
+  %tmp21 = load i32, i32* @jc
+  %tmp22 = load i32, i32* @kc
+  %tmpSREM = srem i32 %tmp21, %tmp22
+  %printf23 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.7, i32 0, i32 0), i32 %tmpSREM)
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+declare i32 @scanf(...)
+```
+
 - 汇编指令
+
+```asm
+	.section	__TEXT,__text,regular,pure_instructions
+	.macosx_version_min 10, 15
+	.p2align	4, 0x90         ## -- Begin function main
+_main:                                  ## @main
+	.cfi_startproc
+## %bb.0:                               ## %entrypoint
+	pushq	%rbx
+	.cfi_def_cfa_offset 16
+	.cfi_offset %rbx, -16
+	movl	_ic(%rip), %ebx
+	leal	(%rbx,%rbx), %esi
+	leaq	_.str(%rip), %rdi
+	xorl	%eax, %eax
+	callq	_printf
+	movsd	_rc(%rip), %xmm0        ## xmm0 = mem[0],zero
+	addsd	%xmm0, %xmm0
+	leaq	_.str.1(%rip), %rdi
+	movb	$1, %al
+	callq	_printf
+	leaq	_.str.2(%rip), %rdi
+	xorl	%esi, %esi
+	xorl	%eax, %eax
+	callq	_printf
+	movsd	_rc(%rip), %xmm0        ## xmm0 = mem[0],zero
+	subsd	%xmm0, %xmm0
+	leaq	_.str.3(%rip), %rdi
+	movb	$1, %al
+	callq	_printf
+	movl	%ebx, %esi
+	imull	%ebx, %esi
+	leaq	_.str.4(%rip), %rdi
+	xorl	%eax, %eax
+	callq	_printf
+	movsd	_rc(%rip), %xmm0        ## xmm0 = mem[0],zero
+	mulsd	%xmm0, %xmm0
+	leaq	_.str.5(%rip), %rdi
+	movb	$1, %al
+	callq	_printf
+	leal	1(%rbx), %ecx
+	movl	%ebx, %eax
+	cltd
+	idivl	%ecx
+	leaq	_.str.6(%rip), %rdi
+	movl	%eax, %esi
+	xorl	%eax, %eax
+	callq	_printf
+	movl	_jc(%rip), %eax
+	cltd
+	idivl	_kc(%rip)
+	leaq	_.str.7(%rip), %rdi
+	movl	%edx, %esi
+	xorl	%eax, %eax
+	callq	_printf
+	popq	%rbx
+	retq
+	.cfi_endproc
+                                        ## -- End function
+	.section	__TEXT,__const
+	.globl	_ic                     ## @ic
+	.p2align	2
+_ic:
+	.long	1                       ## 0x1
+
+	.globl	_rc                     ## @rc
+	.p2align	3
+_rc:
+	.quad	4609434218613702656     ## double 1.5
+
+	.globl	_jc                     ## @jc
+	.p2align	2
+_jc:
+	.long	8                       ## 0x8
+
+	.globl	_kc                     ## @kc
+	.p2align	2
+_kc:
+	.long	3                       ## 0x3
+
+	.globl	_.str                   ## @.str
+_.str:
+	.asciz	"%d\n"
+
+	.globl	_.str.1                 ## @.str.1
+_.str.1:
+	.asciz	"%lf\n"
+
+	.globl	_.str.2                 ## @.str.2
+_.str.2:
+	.asciz	"%d\n"
+
+	.globl	_.str.3                 ## @.str.3
+_.str.3:
+	.asciz	"%lf\n"
+
+	.globl	_.str.4                 ## @.str.4
+_.str.4:
+	.asciz	"%d\n"
+
+	.globl	_.str.5                 ## @.str.5
+_.str.5:
+	.asciz	"%lf\n"
+
+	.globl	_.str.6                 ## @.str.6
+_.str.6:
+	.asciz	"%d\n"
+
+	.globl	_.str.7                 ## @.str.7
+_.str.7:
+	.asciz	"%d\n"
+
+
+.subsections_via_symbols
+```
+
 - 运行结果
+
+![a](./image/test/5.png)
 
 ### 6.3 控制流测试
 
@@ -1018,12 +1609,174 @@ llvm::AllocaInst *CreateEntryBlockAlloca(llvm::Function *TheFunction, llvm::Stri
 - 测试代码
 
 ```pascal
+program BranchTest;
 
+function branch(i : integer) : integer;
+begin
+    if i = 0 then
+	begin
+		writeln('a');
+	end
+	else
+	begin
+        case i of 
+            1: writeln('b');
+            2: writeln('c');
+        end
+        ;
+	end
+	;
+end
+;
+
+begin
+    branch(0);
+    branch(1);
+    branch(2);
+end
+.
 ```
 
+- AST
+
+![a](./image/test/6.png)
+
 - IR
+
+```asm
+; ModuleID = 'main'
+source_filename = "main"
+
+@.str = constant [4 x i8] c"%c\0A\00"
+@.str.1 = constant [4 x i8] c"%c\0A\00"
+@.str.2 = constant [4 x i8] c"%c\0A\00"
+
+define internal void @main() {
+entrypoint:
+  %calltmp = call i32 @branch(i32 0)
+  %calltmp1 = call i32 @branch(i32 1)
+  %calltmp2 = call i32 @branch(i32 2)
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+declare i32 @scanf(...)
+
+define internal i32 @branch(i32) {
+entrypoint:
+  %branch = alloca i32
+  %i = alloca i32
+  store i32 %0, i32* %i
+  %tmp = load i32, i32* %i
+  %tmpEQ = icmp eq i32 %tmp, 0
+  %ifCond = icmp ne i1 %tmpEQ, false
+  br i1 %ifCond, label %then, label %else
+
+then:                                             ; preds = %entrypoint
+  %printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i8 97)
+  br label %merge
+
+else:                                             ; preds = %entrypoint
+  %tmp1 = load i32, i32* %i
+  br label %switch
+
+merge:                                            ; preds = %afterCase, %then
+  %tmp7 = load i32, i32* %branch
+  ret i32 %tmp7
+
+switch:                                           ; preds = %else
+  %tmpEQ3 = icmp eq i32 %tmp1, 1
+  br i1 %tmpEQ3, label %case, label %case2
+  %tmpEQ5 = icmp eq i32 %tmp1, 2
+  br i1 %tmpEQ5, label %case2, label %afterCase
+  br label %afterCase
+
+afterCase:                                        ; preds = %switch, %case2, %switch, %case
+  br label %merge
+
+case:                                             ; preds = %switch
+  %printf4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i32 0, i32 0), i8 98)
+  br label %afterCase
+
+case2:                                            ; preds = %switch, %switch
+  %printf6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.2, i32 0, i32 0), i8 99)
+  br label %afterCase
+}
+```
+
 - 汇编指令
+
+```asm
+	.section	__TEXT,__text,regular,pure_instructions
+	.macosx_version_min 10, 15
+	.p2align	4, 0x90         ## -- Begin function main
+_main:                                  ## @main
+	.cfi_startproc
+## %bb.0:                               ## %entrypoint
+	pushq	%rax
+	.cfi_def_cfa_offset 16
+	xorl	%edi, %edi
+	callq	_branch
+	movl	$1, %edi
+	callq	_branch
+	movl	$2, %edi
+	callq	_branch
+	popq	%rax
+	retq
+	.cfi_endproc
+                                        ## -- End function
+	.p2align	4, 0x90         ## -- Begin function branch
+_branch:                                ## @branch
+	.cfi_startproc
+## %bb.0:                               ## %entrypoint
+	pushq	%rax
+	.cfi_def_cfa_offset 16
+	movl	%edi, (%rsp)
+	testl	%edi, %edi
+	jne	LBB1_3
+## %bb.1:                               ## %then
+	leaq	_.str(%rip), %rdi
+	movl	$97, %esi
+	jmp	LBB1_2
+LBB1_3:                                 ## %else
+	cmpl	$1, (%rsp)
+	jne	LBB1_5
+## %bb.4:                               ## %case
+	leaq	_.str.1(%rip), %rdi
+	movl	$98, %esi
+	jmp	LBB1_2
+LBB1_5:                                 ## %case2
+	leaq	_.str.2(%rip), %rdi
+	movl	$99, %esi
+LBB1_2:                                 ## %merge
+	xorl	%eax, %eax
+	callq	_printf
+	movl	4(%rsp), %eax
+	popq	%rcx
+	retq
+	.cfi_endproc
+                                        ## -- End function
+	.section	__TEXT,__const
+	.globl	_.str                   ## @.str
+_.str:
+	.asciz	"%c\n"
+
+	.globl	_.str.1                 ## @.str.1
+_.str.1:
+	.asciz	"%c\n"
+
+	.globl	_.str.2                 ## @.str.2
+_.str.2:
+	.asciz	"%c\n"
+
+
+.subsections_via_symbols
+```
+
 - 运行结果
+
+![a](./image/test/7.png)
 
 #### 6.3.2 循环测试
 
@@ -1033,21 +1786,257 @@ llvm::AllocaInst *CreateEntryBlockAlloca(llvm::Function *TheFunction, llvm::Stri
 
 ```
 
+- AST
+
+![a](./image/test/8.png)
+
 - IR
+
+```asm
+; ModuleID = 'main'
+source_filename = "main"
+
+@i = global i32 0
+@.str = constant [4 x i8] c"%d\0A\00"
+@.str.1 = constant [4 x i8] c"%d\0A\00"
+
+define internal void @main() {
+entrypoint:
+  store i32 1, i32* @i
+  br label %cond
+
+cond:                                             ; preds = %loop, %entrypoint
+  %tmp = load i32, i32* @i
+  %0 = icmp sle i32 %tmp, 3
+  %forCond = icmp ne i1 %0, false
+  br i1 %forCond, label %loop, label %afterLoop
+
+loop:                                             ; preds = %cond
+  %tmp1 = load i32, i32* @i
+  %printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %tmp1)
+  %1 = add i32 %tmp, 1
+  store i32 %1, i32* @i
+  br label %cond
+
+afterLoop:                                        ; preds = %cond
+  br label %cond2
+
+cond2:                                            ; preds = %loop3, %afterLoop
+  %tmp5 = load i32, i32* @i
+  %tmpSGT = icmp sgt i32 %tmp5, 0
+  %whileCond = icmp ne i1 %tmpSGT, false
+  br i1 %whileCond, label %loop3, label %afterLoop4
+
+loop3:                                            ; preds = %cond2
+  %tmp6 = load i32, i32* @i
+  %printf7 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i32 0, i32 0), i32 %tmp6)
+  %tmp8 = load i32, i32* @i
+  %subtmpi = sub i32 %tmp8, 1
+  store i32 %subtmpi, i32* @i
+  br label %cond2
+
+afterLoop4:                                       ; preds = %cond2
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+declare i32 @scanf(...)
+
+```
+
 - 汇编指令
+
+```asm
+	.section	__TEXT,__text,regular,pure_instructions
+	.macosx_version_min 10, 15
+	.p2align	4, 0x90         ## -- Begin function main
+_main:                                  ## @main
+	.cfi_startproc
+## %bb.0:                               ## %entrypoint
+	pushq	%rbp
+	.cfi_def_cfa_offset 16
+	pushq	%rbx
+	.cfi_def_cfa_offset 24
+	pushq	%rax
+	.cfi_def_cfa_offset 32
+	.cfi_offset %rbx, -24
+	.cfi_offset %rbp, -16
+	movl	$1, _i(%rip)
+	leaq	_.str(%rip), %rbx
+	.p2align	4, 0x90
+LBB0_1:                                 ## %cond
+                                        ## =>This Inner Loop Header: Depth=1
+	movl	_i(%rip), %ebp
+	cmpl	$3, %ebp
+	jg	LBB0_3
+## %bb.2:                               ## %loop
+                                        ##   in Loop: Header=BB0_1 Depth=1
+	movl	_i(%rip), %esi
+	movq	%rbx, %rdi
+	xorl	%eax, %eax
+	callq	_printf
+	incl	%ebp
+	movl	%ebp, _i(%rip)
+	jmp	LBB0_1
+LBB0_3:                                 ## %afterLoop
+	leaq	_.str.1(%rip), %rbx
+	cmpl	$0, _i(%rip)
+	jle	LBB0_6
+	.p2align	4, 0x90
+LBB0_5:                                 ## %loop3
+                                        ## =>This Inner Loop Header: Depth=1
+	movl	_i(%rip), %esi
+	movq	%rbx, %rdi
+	xorl	%eax, %eax
+	callq	_printf
+	decl	_i(%rip)
+	cmpl	$0, _i(%rip)
+	jg	LBB0_5
+LBB0_6:                                 ## %afterLoop4
+	addq	$8, %rsp
+	popq	%rbx
+	popq	%rbp
+	retq
+	.cfi_endproc
+                                        ## -- End function
+	.globl	_i                      ## @i
+.zerofill __DATA,__common,_i,4,2
+	.section	__TEXT,__const
+	.globl	_.str                   ## @.str
+_.str:
+	.asciz	"%d\n"
+
+	.globl	_.str.1                 ## @.str.1
+_.str.1:
+	.asciz	"%d\n"
+
+
+.subsections_via_symbols
+
+```
+
 - 运行结果
+
+![a](./image/test/9.png)
 
 #### 6.3.3 Goto测试
 
 - 测试代码
 
 ```pascal
+program GotoTest;
 
+var 
+    i : integer;
+
+begin
+    i := 2;
+0:
+    writeln('a');
+    i := i - 1;
+    if i > 0 then
+    begin
+        goto 0;
+    end
+    ;
+
+end
+.
 ```
 
+- AST
+
+![a](./image/test/10.png)
+
 - IR
+
+```asm
+; ModuleID = 'main'
+source_filename = "main"
+
+@i = global i32 0
+@.str = constant [4 x i8] c"%c\0A\00"
+
+define internal void @main() {
+entrypoint:
+  store i32 2, i32* @i
+  br label %Label_0
+
+Label_0:                                          ; preds = %then, %entrypoint
+  %printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i8 97)
+  br label %afterLabel_0
+
+afterLabel_0:                                     ; preds = %Label_0
+  %tmp = load i32, i32* @i
+  %subtmpi = sub i32 %tmp, 1
+  store i32 %subtmpi, i32* @i
+  %tmp1 = load i32, i32* @i
+  %tmpSGT = icmp sgt i32 %tmp1, 0
+  %ifCond = icmp ne i1 %tmpSGT, false
+  br i1 %ifCond, label %then, label %else
+
+then:                                             ; preds = %afterLabel_0
+  br label %Label_0
+  br label %merge
+
+else:                                             ; preds = %afterLabel_0
+  br label %merge
+
+merge:                                            ; preds = %else, %then
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+declare i32 @scanf(...)
+```
+
 - 汇编指令
+
+```asm
+	.section	__TEXT,__text,regular,pure_instructions
+	.macosx_version_min 10, 15
+	.p2align	4, 0x90         ## -- Begin function main
+_main:                                  ## @main
+	.cfi_startproc
+## %bb.0:                               ## %entrypoint
+	pushq	%rbx
+	.cfi_def_cfa_offset 16
+	.cfi_offset %rbx, -16
+	movl	$2, _i(%rip)
+	leaq	_.str(%rip), %rbx
+	.p2align	4, 0x90
+LBB0_1:                                 ## %Label_0
+                                        ## =>This Inner Loop Header: Depth=1
+	movq	%rbx, %rdi
+	movl	$97, %esi
+	xorl	%eax, %eax
+	callq	_printf
+	movl	_i(%rip), %eax
+	decl	%eax
+	movl	%eax, _i(%rip)
+	testl	%eax, %eax
+	jg	LBB0_1
+## %bb.2:                               ## %else
+	popq	%rbx
+	retq
+	.cfi_endproc
+                                        ## -- End function
+	.globl	_i                      ## @i
+.zerofill __DATA,__common,_i,4,2
+	.section	__TEXT,__const
+	.globl	_.str                   ## @.str
+_.str:
+	.asciz	"%c\n"
+
+
+.subsections_via_symbols
+```
+
 - 运行结果
+
+![a](./image/test/11.png)
 
 ### 6.4 函数测试
 
@@ -1056,36 +2045,451 @@ llvm::AllocaInst *CreateEntryBlockAlloca(llvm::Function *TheFunction, llvm::Stri
 - 测试代码
 
 ```pascal
+program hello;
 
+function add(a, b : integer) : integer;
+begin
+	add := a + b;
+end
+;
+
+begin
+    writeln(add(1, 2));
+end
+.
 ```
 
+- AST
+
+![a](./image/test/12.png)
+
 - IR
+
+```asm
+; ModuleID = 'main'
+source_filename = "main"
+
+@.str = constant [4 x i8] c"%d\0A\00"
+
+define internal void @main() {
+entrypoint:
+  %calltmp = call i32 @add(i32 1, i32 2)
+  %printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %calltmp)
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+declare i32 @scanf(...)
+
+define internal i32 @add(i32, i32) {
+entrypoint:
+  %add = alloca i32
+  %b = alloca i32
+  %a = alloca i32
+  store i32 %0, i32* %a
+  store i32 %1, i32* %b
+  %tmp = load i32, i32* %a
+  %tmp1 = load i32, i32* %b
+  %addtmpi = add i32 %tmp, %tmp1
+  store i32 %addtmpi, i32* %add
+  %tmp2 = load i32, i32* %add
+  ret i32 %tmp2
+}
+```
+
 - 汇编指令
+
+```asm
+	.section	__TEXT,__text,regular,pure_instructions
+	.macosx_version_min 10, 15
+	.p2align	4, 0x90         ## -- Begin function main
+_main:                                  ## @main
+	.cfi_startproc
+## %bb.0:                               ## %entrypoint
+	pushq	%rax
+	.cfi_def_cfa_offset 16
+	movl	$1, %edi
+	movl	$2, %esi
+	callq	_add
+	leaq	_.str(%rip), %rdi
+	movl	%eax, %esi
+	xorl	%eax, %eax
+	callq	_printf
+	popq	%rax
+	retq
+	.cfi_endproc
+                                        ## -- End function
+	.p2align	4, 0x90         ## -- Begin function add
+_add:                                   ## @add
+	.cfi_startproc
+## %bb.0:                               ## %entrypoint
+	movl	%edi, %eax
+	movl	%edi, -12(%rsp)
+	movl	%esi, -8(%rsp)
+	addl	%esi, %eax
+	movl	%eax, -4(%rsp)
+	retq
+	.cfi_endproc
+                                        ## -- End function
+	.section	__TEXT,__const
+	.globl	_.str                   ## @.str
+_.str:
+	.asciz	"%d\n"
+
+
+.subsections_via_symbols
+```
+
 - 运行结果
+
+![a](./image/test/13.png)
 
 #### 6.4.2 递归函数测试
 
 - 测试代码
 
 ```pascal
+program RecursiveFunctionTest;
+
+var
+    i : integer;
+
+function Fibonacci(n : integer) : integer;
+begin
+    if n = 0 then
+    begin
+        Fibonacci := 0;
+    end
+    else 
+    begin
+        if n = 1 then
+        begin
+            Fibonacci := 1;
+        end
+        else
+        begin
+            Fibonacci := Fibonacci(n - 1) + Fibonacci(n - 2);
+        end
+        ;
+    end
+    ;
+end
+;
+
+begin
+    for i := 1 to 10 do
+    begin
+        writeln(Fibonacci(i));
+    end
+    ;
+end
+.
+```
+
+- AST
+
+![a](./image/test/14.png)
+
+- IR
+
+```asm
+; ModuleID = 'main'
+source_filename = "main"
+
+@i = global i32 0
+@.str = constant [4 x i8] c"%d\0A\00"
+
+define internal void @main() {
+entrypoint:
+  store i32 1, i32* @i
+  br label %cond
+
+cond:                                             ; preds = %loop, %entrypoint
+  %tmp = load i32, i32* @i
+  %0 = icmp sle i32 %tmp, 10
+  %forCond = icmp ne i1 %0, false
+  br i1 %forCond, label %loop, label %afterLoop
+
+loop:                                             ; preds = %cond
+  %tmp1 = load i32, i32* @i
+  %calltmp = call i32 @Fibonacci(i32 %tmp1)
+  %printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %calltmp)
+  %1 = add i32 %tmp, 1
+  store i32 %1, i32* @i
+  br label %cond
+
+afterLoop:                                        ; preds = %cond
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+declare i32 @scanf(...)
+
+define internal i32 @Fibonacci(i32) {
+entrypoint:
+  %Fibonacci = alloca i32
+  %n = alloca i32
+  store i32 %0, i32* %n
+  %tmp = load i32, i32* %n
+  %tmpEQ = icmp eq i32 %tmp, 0
+  %ifCond = icmp ne i1 %tmpEQ, false
+  br i1 %ifCond, label %then, label %else
+
+then:                                             ; preds = %entrypoint
+  store i32 0, i32* %Fibonacci
+  br label %merge
+
+else:                                             ; preds = %entrypoint
+  %tmp1 = load i32, i32* %n
+  %tmpEQ2 = icmp eq i32 %tmp1, 1
+  %ifCond3 = icmp ne i1 %tmpEQ2, false
+  br i1 %ifCond3, label %then4, label %else5
+
+merge:                                            ; preds = %merge6, %then
+  %tmp11 = load i32, i32* %Fibonacci
+  ret i32 %tmp11
+
+then4:                                            ; preds = %else
+  store i32 1, i32* %Fibonacci
+  br label %merge6
+
+else5:                                            ; preds = %else
+  %tmp7 = load i32, i32* %n
+  %subtmpi = sub i32 %tmp7, 1
+  %calltmp = call i32 @Fibonacci(i32 %subtmpi)
+  %tmp8 = load i32, i32* %n
+  %subtmpi9 = sub i32 %tmp8, 2
+  %calltmp10 = call i32 @Fibonacci(i32 %subtmpi9)
+  %addtmpi = add i32 %calltmp, %calltmp10
+  store i32 %addtmpi, i32* %Fibonacci
+  br label %merge6
+
+merge6:                                           ; preds = %else5, %then4
+  br label %merge
+}
 
 ```
 
-- IR
 - 汇编指令
+
+```asm
+	.section	__TEXT,__text,regular,pure_instructions
+	.macosx_version_min 10, 15
+	.p2align	4, 0x90         ## -- Begin function main
+_main:                                  ## @main
+	.cfi_startproc
+## %bb.0:                               ## %entrypoint
+	pushq	%rbp
+	.cfi_def_cfa_offset 16
+	pushq	%rbx
+	.cfi_def_cfa_offset 24
+	pushq	%rax
+	.cfi_def_cfa_offset 32
+	.cfi_offset %rbx, -24
+	.cfi_offset %rbp, -16
+	movl	$1, _i(%rip)
+	leaq	_.str(%rip), %rbx
+	.p2align	4, 0x90
+LBB0_1:                                 ## %cond
+                                        ## =>This Inner Loop Header: Depth=1
+	movl	_i(%rip), %ebp
+	cmpl	$10, %ebp
+	jg	LBB0_3
+## %bb.2:                               ## %loop
+                                        ##   in Loop: Header=BB0_1 Depth=1
+	movl	_i(%rip), %edi
+	callq	_Fibonacci
+	movq	%rbx, %rdi
+	movl	%eax, %esi
+	xorl	%eax, %eax
+	callq	_printf
+	incl	%ebp
+	movl	%ebp, _i(%rip)
+	jmp	LBB0_1
+LBB0_3:                                 ## %afterLoop
+	addq	$8, %rsp
+	popq	%rbx
+	popq	%rbp
+	retq
+	.cfi_endproc
+                                        ## -- End function
+	.p2align	4, 0x90         ## -- Begin function Fibonacci
+_Fibonacci:                             ## @Fibonacci
+	.cfi_startproc
+## %bb.0:                               ## %entrypoint
+	pushq	%rbx
+	.cfi_def_cfa_offset 16
+	subq	$16, %rsp
+	.cfi_def_cfa_offset 32
+	.cfi_offset %rbx, -16
+	movl	%edi, 8(%rsp)
+	testl	%edi, %edi
+	jne	LBB1_3
+## %bb.1:                               ## %then
+	movl	$0, 12(%rsp)
+	jmp	LBB1_2
+LBB1_3:                                 ## %else
+	cmpl	$1, 8(%rsp)
+	jne	LBB1_5
+## %bb.4:                               ## %then4
+	movl	$1, 12(%rsp)
+	jmp	LBB1_2
+LBB1_5:                                 ## %else5
+	movl	8(%rsp), %edi
+	decl	%edi
+	callq	_Fibonacci
+	movl	%eax, %ebx
+	movl	8(%rsp), %edi
+	addl	$-2, %edi
+	callq	_Fibonacci
+	addl	%ebx, %eax
+	movl	%eax, 12(%rsp)
+LBB1_2:                                 ## %merge
+	movl	12(%rsp), %eax
+	addq	$16, %rsp
+	popq	%rbx
+	retq
+	.cfi_endproc
+                                        ## -- End function
+	.globl	_i                      ## @i
+.zerofill __DATA,__common,_i,4,2
+	.section	__TEXT,__const
+	.globl	_.str                   ## @.str
+_.str:
+	.asciz	"%d\n"
+
+
+.subsections_via_symbols
+
+```
+
 - 运行结果
+
+![a](./image/test/15.png)
 
 #### 6.4.3 引用传递测试
 
 - 测试代码
 
 ```pascal
+program ReferenceParameter;
+
+var 
+    i : integer;
+
+function modify(var n : integer) : integer;
+begin
+    n := 1;
+end
+;
+
+begin
+    i := 0;
+    writeln(i);
+    modify(i);
+    writeln(i);
+end
+.
+```
+
+- AST
+
+![a](./image/test/16.png)
+
+- IR
+
+```asm
+; ModuleID = 'main'
+source_filename = "main"
+
+@i = global i32 0
+@.str = constant [4 x i8] c"%d\0A\00"
+@.str.1 = constant [4 x i8] c"%d\0A\00"
+
+define internal void @main() {
+entrypoint:
+  store i32 0, i32* @i
+  %tmp = load i32, i32* @i
+  %printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %tmp)
+  %calltmp = call i32 @modify(i32* @i)
+  %tmp1 = load i32, i32* @i
+  %printf2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i32 0, i32 0), i32 %tmp1)
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+declare i32 @scanf(...)
+
+define internal i32 @modify(i32* nonnull) {
+entrypoint:
+  %modify = alloca i32
+  %n = getelementptr i32, i32* %0, i32 0
+  store i32 1, i32* %n
+  %tmp = load i32, i32* %modify
+  ret i32 %tmp
+}
 
 ```
 
-- IR
 - 汇编指令
+
+```asm
+	.section	__TEXT,__text,regular,pure_instructions
+	.macosx_version_min 10, 15
+	.p2align	4, 0x90         ## -- Begin function main
+_main:                                  ## @main
+	.cfi_startproc
+## %bb.0:                               ## %entrypoint
+	pushq	%rbx
+	.cfi_def_cfa_offset 16
+	.cfi_offset %rbx, -16
+	movl	$0, _i(%rip)
+	leaq	_i(%rip), %rbx
+	leaq	_.str(%rip), %rdi
+	xorl	%esi, %esi
+	xorl	%eax, %eax
+	callq	_printf
+	movq	%rbx, %rdi
+	callq	_modify
+	movl	_i(%rip), %esi
+	leaq	_.str.1(%rip), %rdi
+	xorl	%eax, %eax
+	callq	_printf
+	popq	%rbx
+	retq
+	.cfi_endproc
+                                        ## -- End function
+	.p2align	4, 0x90         ## -- Begin function modify
+_modify:                                ## @modify
+	.cfi_startproc
+## %bb.0:                               ## %entrypoint
+	movl	$1, (%rdi)
+	movl	-4(%rsp), %eax
+	retq
+	.cfi_endproc
+                                        ## -- End function
+	.globl	_i                      ## @i
+.zerofill __DATA,__common,_i,4,2
+	.section	__TEXT,__const
+	.globl	_.str                   ## @.str
+_.str:
+	.asciz	"%d\n"
+
+	.globl	_.str.1                 ## @.str.1
+_.str.1:
+	.asciz	"%d\n"
+
+
+.subsections_via_symbols
+
+```
+
 - 运行结果
+
+![a](./image/test/17.png)
 
 ### 6.5 综合测试
 
@@ -1126,6 +2530,10 @@ begin
 end
 .
 ```
+
+- AST
+
+![a](./image/test/18.png)
 
 - IR
 
@@ -1261,6 +2669,8 @@ _.str:
 
 - 运行结果
 
+![a](./image/test/19.png)
+
 #### 6.5.2 测试用例2
 
 - 测试代码
@@ -1298,6 +2708,10 @@ begin
 end
 .
 ```
+
+- AST
+
+![a](./image/test/20.png)
 
 - IR
 
@@ -1448,6 +2862,8 @@ _.str.1:
 
 - 运行结果
 
+![a](./image/test/21.png)
+
 #### 6.5.3 测试用例3
 
 - 测试代码
@@ -1475,6 +2891,10 @@ begin
 end
 .
 ```
+
+- AST
+
+![a](./image/test/22.png)
 
 - IR
 
@@ -1598,6 +3018,8 @@ _.str:
 ```
 
 - 运行结果
+
+![a](./image/test/23.png)
 
 ## 第柒章 总结
 
