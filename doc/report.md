@@ -1,4 +1,4 @@
-# 编译原理实验报告
+编译原理实验报告
 
 [TOC]
 
@@ -786,34 +786,33 @@ LLVM IR是LLVM的核心所在，通过将不同高级语言的前端变换成LLV
 - llvm::Value表示一个类型的值，具有一个llvm::Type*成员和一个use list，前者指向值的类型类，后者跟踪使用了该值的其他对象，可以通过迭代器进行访问。
 
   - 值的存取分别可以通过llvm::LoadInst和llvm::StoreInst实现，也可以借助IRBuilder的CreateLoad和CreateStore实现。
-
 - llvm::Type表示类型类，LLVM支持17种数据类型，可以通过Type ID判断类型：
 
-  ```c++
-    enum TypeID {
-      // PrimitiveTypes - make sure LastPrimitiveTyID stays up to date.
-      VoidTyID = 0,    ///<  0: type with no size
-      HalfTyID,        ///<  1: 16-bit floating point type
-      FloatTyID,       ///<  2: 32-bit floating point type
-      DoubleTyID,      ///<  3: 64-bit floating point type
-      X86_FP80TyID,    ///<  4: 80-bit floating point type (X87)
-      FP128TyID,       ///<  5: 128-bit floating point type (112-bit mantissa)
-      PPC_FP128TyID,   ///<  6: 128-bit floating point type (two 64-bits, PowerPC)
-      LabelTyID,       ///<  7: Labels
-      MetadataTyID,    ///<  8: Metadata
-      X86_MMXTyID,     ///<  9: MMX vectors (64 bits, X86 specific)
-      TokenTyID,       ///< 10: Tokens
-  
-      // Derived types... see DerivedTypes.h file.
-      // Make sure FirstDerivedTyID stays up to date!
-      IntegerTyID,     ///< 11: Arbitrary bit width integers
-      FunctionTyID,    ///< 12: Functions
-      StructTyID,      ///< 13: Structures
-      ArrayTyID,       ///< 14: Arrays
-      PointerTyID,     ///< 15: Pointers
-      VectorTyID       ///< 16: SIMD 'packed' format, or other vector type
-    };
-  ```
+```C++
+ enum TypeID {
+    // PrimitiveTypes - make sure LastPrimitiveTyID stays up to date.
+    VoidTyID = 0,    ///<  0: type with no size
+    HalfTyID,        ///<  1: 16-bit floating point type
+    FloatTyID,       ///<  2: 32-bit floating point type
+    DoubleTyID,      ///<  3: 64-bit floating point type
+    X86_FP80TyID,    ///<  4: 80-bit floating point type (X87)
+    FP128TyID,       ///<  5: 128-bit floating point type (112-bit mantissa)
+    PPC_FP128TyID,   ///<  6: 128-bit floating point type (two 64-bits, PowerPC)
+    LabelTyID,       ///<  7: Labels
+    MetadataTyID,    ///<  8: Metadata
+    X86_MMXTyID,     ///<  9: MMX vectors (64 bits, X86 specific)
+    TokenTyID,       ///< 10: Tokens
+
+    // Derived types... see DerivedTypes.h file.
+    // Make sure FirstDerivedTyID stays up to date!
+    IntegerTyID,     ///< 11: Arbitrary bit width integers
+    FunctionTyID,    ///< 12: Functions
+    StructTyID,      ///< 13: Structures
+    ArrayTyID,       ///< 14: Arrays
+    PointerTyID,     ///< 15: Pointers
+    VectorTyID       ///< 16: SIMD 'packed' format, or other vector type
+  };
+```
 
 - llvm::Constant表示各种常量的基类，包括ConstantInt整形常量、ConstantFP浮点型常量、ConstantArray数组常量、ConstantStruct结构体常量等。
 
@@ -843,7 +842,36 @@ std::vector<llvm::Function*> funcStack;
 llvm::BasicBlock* labelBlock[10000];
 ```
 
-- 符号表：
+- 符号表：结合函数指针栈和LLVM函数自带的符号表来实现，创建变量时可以自动插入函数的符号表，也可以通过`getValueSymbolTable()->lookup(name)`来查询和取出符号表中指定符号名字的值：
+
+![image-20200531130715688](image/LLVMsymbol.png)
+
+另外模块的全局变量可以从llvm::Module的getGloabalVariable()查询和获取，在CodeGenerator.h中实现了查询符号的函数：
+
+```C++
+llvm::Value* findValue(const std::string & name)
+{
+    llvm::Value * result = nullptr;
+    for (auto it = funcStack.rbegin(); it != funcStack.rend(); it++)
+    {
+        if ((result = (*it)->getValueSymbolTable()->lookup(name)) != nullptr)
+        {
+            //std::cout << "Find " << name << " in " << std::string((*it)->getName()) << std::endl;
+            return result;
+        }
+        else
+        {
+            //std::cout << "Not Find " << name << " in " << std::string((*it)->getName()) << std::endl;
+        }
+    }
+    if ((result = TheModule->getGlobalVariable(name)) == nullptr)
+    {
+        throw std::logic_error("[ERROR]Undeclared variable: " + name);
+    }
+    //std::cout << "Find " << name << " in global" << std::endl;
+    return result;
+}
+```
 
 #### 3.3.2 类型系统
 
@@ -889,7 +917,7 @@ llvm::Type* AstType::toLLVMType()
 - Real使用Double类型
 - Range使用32位Int类型
 - Void对应Void类型
-- 数组类型需要先构造数组元素类型和确定数组大小，分为常量范围数组和变量范围数组。
+- 数组类型需要先构造数组元素类型并通过Range类型的上下限确定数组大小，分为常量范围数组和变量范围数组。
 
 为了实现引用传递，引入指针类型（仅支持内置类型指针）：
 
@@ -949,19 +977,784 @@ llvm::AllocaInst *CreateEntryBlockAlloca(llvm::Function *TheFunction, llvm::Stri
 - 访问变量值：llvm::LoadInst或者IRBuilder的CreateLoad实现
 - 存储变量值：llvm::StoreInst或者IRBuilder的StoreLoad实现
 
-基于变量取值、函数栈以及LLVM函数的符号表
+#### 3.3.5 标识符/数组引用
 
-#### 3.3.5
+基于变量取值、函数栈以及LLVM函数的符号表可以实现标识符到llvm::Value*的映射从而返回标识符的值：
 
-#### 3.3.6
+```C++
+llvm::Value *Identifier::codeGen(CodeGenerator & generator) {
+//    LOG_I("Idnetifier");
+    return new llvm::LoadInst(generator.findValue(*(this->name)), "tmp", false, TheBuilder.GetInsertBlock());
+}
+```
 
-#### 3.3.7
+基于数组元素下标的引用过程：
 
-#### 3.3.8
+- 根据数组标识符查询符号表得到数组地址
+- 根据数组标识符查询得到数组的范围类型，分为常量范围类型和变量范围类型
+- 根据范围类型的下限和索引下标的值计算地址偏移量
+- 根据数组地址和地址偏移量获取数组元素地址
+- 根据元素地址加载元素值
 
-#### 3.3.9
+以上过程通过getReference函数实现获取元素引用：
 
-#### 3.3.10
+```C++
+llvm::Value *ArrayReference::getReference(CodeGenerator & generator)
+{
+    string name = this->array->getName();
+    llvm::Value* arrayValue = generator.findValue(name), *indexValue;
+    if (generator.arrayMap[name]->range->type == AstType::SPL_CONST_RANGE)
+    {
+        indexValue = generator.arrayMap[name]->range->constRangeType->mapIndex(this->index->codeGen(generator), generator);
+    }
+    else
+    {
+        indexValue = generator.arrayMap[name]->range->enumRangeType->mapIndex(this->index->codeGen(generator), generator);
+    }
+    vector<llvm::Value*> indexList;
+    indexList.push_back(TheBuilder.getInt32(0));
+    indexList.push_back(indexValue);
+    return TheBuilder.CreateInBoundsGEP(arrayValue, llvm::ArrayRef<llvm::Value*>(indexList));
+}
+```
+
+并在ArrayReference中加载元素的值:
+
+```C++
+llvm::Value *ArrayReference::codeGen(CodeGenerator & generator) {
+    //LOG_I("Array Reference");
+    return TheBuilder.CreateLoad(this->getReference(generator), "arrRef");
+}
+```
+
+#### 3.3.6 二元操作
+
+LLVM的IRBuilder集成了丰富的二元操作接口，包括ADD, SUB, MUL, DIV, CMPGE, CMPLE, CMPGT, CMPLT, CMPEQ, CMPNE, AND, OR, SREM(MOD), XOR等，实验中设计了BinaryOp函数，根据操作符和两个操作数返回一个二元操作结果值（整型操作和浮点操作有区别）：
+
+```C++
+llvm::Value *BinaryOp(llvm::Value *lValue, BinaryExpression::BinaryOperator op, llvm::Value *rValue)
+{
+//        printType(lValue);
+//        printType(rValue);
+    bool flag = lValue->getType()->isDoubleTy() || rValue->getType()->isDoubleTy();
+    switch (op)
+    {
+        case BinaryExpression::SPL_PLUS: return flag ? TheBuilder.CreateFAdd(lValue, rValue, "addtmpf") : TheBuilder.CreateAdd(lValue, rValue, "addtmpi");
+
+        case BinaryExpression::SPL_MINUS: return flag ? TheBuilder.CreateFSub(lValue, rValue, "subtmpf") : TheBuilder.CreateSub(lValue, rValue, "subtmpi");
+
+        case BinaryExpression::SPL_MUL: return flag ? TheBuilder.CreateFMul(lValue, rValue, "multmpf") : TheBuilder.CreateMul(lValue, rValue, "multmpi");
+
+        case BinaryExpression::SPL_DIV: return TheBuilder.CreateSDiv(lValue, rValue, "tmpDiv");
+
+        case BinaryExpression::SPL_GE: return TheBuilder.CreateICmpSGE(lValue, rValue, "tmpSGE");
+
+        case BinaryExpression::SPL_GT: return TheBuilder.CreateICmpSGT(lValue, rValue, "tmpSGT");
+
+        case BinaryExpression::SPL_LT: return TheBuilder.CreateICmpSLT(lValue, rValue, "tmpSLT");
+
+        case BinaryExpression::SPL_LE: return TheBuilder.CreateICmpSLE(lValue, rValue, "tmpSLE");
+
+        case BinaryExpression::SPL_EQUAL: return TheBuilder.CreateICmpEQ(lValue, rValue, "tmpEQ");
+
+        case BinaryExpression::SPL_UNEQUAL: return TheBuilder.CreateICmpNE(lValue, rValue, "tmpNE");
+
+        case BinaryExpression::SPL_OR: return TheBuilder.CreateOr(lValue, rValue, "tmpOR");
+
+        case BinaryExpression::SPL_MOD: return TheBuilder.CreateSRem(lValue, rValue, "tmpSREM");
+
+        case BinaryExpression::SPL_AND: return TheBuilder.CreateAnd(lValue, rValue, "tmpAND");
+
+        case BinaryExpression::SPL_XOR: return TheBuilder.CreateXor(lValue, rValue, "tmpXOR");
+    }
+}
+```
+
+同时在BinaryExpression的代码生成中调用以上函数实现二进制表达式操作：
+
+```C++
+llvm::Value *BinaryExpression::codeGen(CodeGenerator & generator) {
+    //LOG_I("Binary Expression");
+    llvm::Value* lValue = this->lhs->codeGen(generator);
+    llvm::Value* rValue = this->rhs->codeGen(generator);
+    return BinaryOp(lValue, this->op, rValue);
+}
+```
+
+#### 3.3.7 赋值语句
+
+与标识符引用相对的是赋值语句，需要计算等式右表达式的值并赋予左表达式，分为标识符赋值和数组赋值。二者的区别就是标识符引用和数组元素引用，前者直接在符号表查询地址，后者需要根据下标和下限计算偏移量再获取元素的地址，这部分具体描述在[3.3.5](#3.3.5 标识符/数组引用)。
+
+```C++
+llvm::Value *AssignStatement::codeGen(CodeGenerator & generator) {
+    //LOG_I("Assign Statement");
+    llvm::Value *res = nullptr;
+    this->forward(generator);
+    switch (this->type)
+    {
+        case ID_ASSIGN: res = TheBuilder.CreateStore(this->rhs->codeGen(generator), generator.findValue(this->lhs->getName())); break;
+        case ARRAY_ASSIGN: res = TheBuilder.CreateStore(this->rhs->codeGen(generator), (new ArrayReference(this->lhs, this->sub))->getReference(generator)); break;
+        case RECORD_ASSIGN: res = nullptr; break;
+    }
+    this->backword();
+    return res;
+}
+```
+
+#### 3.3.8 Program
+
+Program相当于程序的main函数，需要构建main函数的函数类型并创建函数实例，将main函数push进入函数栈，之后构造一个基础块作为指令的插入点，递归调用Routine的代码生成后函数出栈。同时由于main函数直接存在于模块中，需要把其Routine下的声明置为global，这点可以通过setGlobal()实现。
+
+```C++
+llvm::Value *Program::codeGen(CodeGenerator & generator) {
+    //LOG_I("Program");
+    //Main function prototype
+    vector<llvm::Type*> argTypes;
+    llvm::FunctionType * funcType = llvm::FunctionType::get(TheBuilder.getVoidTy(), makeArrayRef(argTypes), false);
+    generator.mainFunction = llvm::Function::Create(funcType, llvm::GlobalValue::ExternalLinkage, "main", generator.TheModule.get());
+    llvm::BasicBlock * basicBlock = llvm::BasicBlock::Create(TheContext, "entrypoint", generator.mainFunction, 0);
+    
+    generator.pushFunction(generator.mainFunction);
+    TheBuilder.SetInsertPoint(basicBlock);
+    //Create System functions
+    generator.printf = generator.createPrintf();
+    generator.scanf = generator.createScanf();
+    //Code generate
+    this->routine->setGlobal();
+    this->routine->codeGen(generator);
+    TheBuilder.CreateRetVoid();
+    generator.popFunction();
+    
+    return nullptr;
+}
+```
+
+#### 3.3.9 Routine
+
+Routine包含了常量声明、变量声明、类型声明、子例程声明、函数体声明，该节点只需要依此调用子节点的codeGen方法即可。
+
+```C++
+llvm::Value *Routine::codeGen(CodeGenerator & generator) {
+    //LOG_I("Routine");
+    llvm::Value* res = nullptr;
+    
+    //Const declareation part
+    for (auto & constDecl : *(this->constDeclList))
+    {
+        res = constDecl->codeGen(generator);
+    }
+    //Variable declareation part
+    for (auto & varDecl : *(this->varDeclList))
+    {
+        res = varDecl->codeGen(generator);
+    }
+    //Type declareation part
+    for (auto & typeDecl : *(this->typeDeclList))
+    {
+        res = typeDecl->codeGen(generator);
+    }
+    //Routine declareation part
+    for (auto & routineDecl : *(this->routineList))
+    {
+        res = routineDecl->codeGen(generator);
+    }
+    
+    //Routine body
+    res = routineBody->codeGen(generator);
+    return res;
+}
+```
+
+#### 3.3.10 常量/变量声明
+
+常量声明和变量声明相似，只不过增加了初始化和常量属性声明。
+
+- 全局常量/变量：调用llvm::GlobalVariable构造全局常量/变量，通过指定isConst参数来区分常量和变量。此时的初始化可以通过传递初始值作为llvm::GlobalVariable的参数实现。
+- 局部常量/变量：调用3.3.4提到的CreateEntryBlockAlloca方法创建局部常量/变量。此时的初始化可以通过IRBuilder直接存入初始值。
+
+```C++
+llvm::Value *ConstDeclaration::codeGen(CodeGenerator & generator) {
+    //LOG_I("Const Declaration");
+    string name = this->name->getName();
+    this->type = new AstType(this->value->getType());
+    if (this->isGlobal())
+    {
+         return new llvm::GlobalVariable(*generator.TheModule, this->type->toLLVMType(), true, llvm::GlobalValue::ExternalLinkage, this->type->initValue(this->value), name);
+    }
+    else
+    {
+        auto alloc = CreateEntryBlockAlloca(generator.getCurFunction(), name, this->type->toLLVMType());
+        return TheBuilder.CreateStore(this->value->codeGen(generator), alloc);
+    }
+}
+```
+
+常量/变量创建之后将自动加入到当前函数的符号表或者整个模块的符号表中。
+
+#### 3.3.11 函数/过程声明
+
+函数声明和过程声明类似，函数声明只需要基于过程声明增加返回值处理即可，这里把二者合在一起实现。声明包括:
+
+- 函数类型声明
+  - 参数类型考虑引用传递，所以需要处理非指针类型和指针类型
+  - 函数声明的返回值类型为实际类型，过程声明的返回值类型为空
+- 函数实例和基础块：根据函数类型创建函数实例并构建基础块作为代码插入点
+- 函数入栈：将函数实例的指针推入函数栈
+- 函数实参获取：可以通过llvm::Function::arg_iterator迭代遍历函数的实际参数并获取参数的值
+  - 值传递：将获取的参数值直接存到局部变量中
+  - 引用传递：通过TheBuilder.CreateGEP获取参数地址，并指定新的变量名，无需存储值，此外**为了在函数调用时可以区分引用传递参数和值传递参数，我们利用LLVM函数的参数属性进行标识**
+- 函数返回值声明：函数声明需要创建函数返回值变量，同时以函数名称给其命名
+- 函数体生成：调用函数体子节点生成代码
+- 函数返回：创建返回实例，函数声明返回函数名的返回值，过程声明返回空值
+- 函数出栈：将函数指针弹出栈顶，并将当前函数指针重新指向栈顶
+
+```C++
+llvm::Value *FuncDeclaration::codeGen(CodeGenerator & generator) {
+    //LOG_I("Function Declaration");
+    //Prototype
+    vector<llvm::Type*> argTypes;
+    for (auto & argType : *(this->paraList))
+    {
+        if (argType->isVar)
+        {
+            argTypes.insert(argTypes.end(), argType->nameList->size(), toLLVMPtrType(argType->getType()->buildInType));
+        }
+        else
+        {
+            argTypes.insert(argTypes.end(), argType->nameList->size(), argType->getType()->toLLVMType());
+        }
+    }
+    llvm::FunctionType *funcType = llvm::FunctionType::get(this->returnType->toLLVMType(), argTypes, false);
+    llvm::Function *function = llvm::Function::Create(funcType, llvm::GlobalValue::InternalLinkage, this->name->getName(), generator.TheModule.get());
+    generator.pushFunction(function);
+    
+    //Block
+    llvm::BasicBlock *newBlock = llvm::BasicBlock::Create(TheContext, "entrypoint", function, nullptr);
+    TheBuilder.SetInsertPoint(newBlock);
+    
+    //Parameters
+    llvm::Function::arg_iterator argIt =  function->arg_begin();
+    int index = 1;
+    for (auto & args : *(this->paraList))
+    {
+        for (auto & arg : *(args->nameList))
+        {
+            llvm::Value *alloc = nullptr;
+            if (args->isVar)
+            {
+                //Check value
+//                alloc = generator.findValue(arg->getName());
+                function->addAttribute(index, llvm::Attribute::NonNull);
+                alloc = TheBuilder.CreateGEP(argIt++, TheBuilder.getInt32(0), arg->getName());
+            }
+            else
+            {
+                alloc = CreateEntryBlockAlloca(function, arg->getName(), args->type->toLLVMType());
+                TheBuilder.CreateStore(argIt++, alloc);
+            }
+            index++;
+        }
+    }
+    
+    //Return
+    llvm::Value *res = nullptr;
+    if (this->returnType->type != AstType::SPL_VOID)
+    {
+        res = CreateEntryBlockAlloca(function, this->name->getName(), this->returnType->toLLVMType());
+    }
+    
+    //Sub routine
+    this->subRoutine->codeGen(generator);
+    
+    //Return value
+    if (this->returnType->type != AstType::SPL_VOID)
+    {
+        auto returnInst = this->name->codeGen(generator);
+        TheBuilder.CreateRet(returnInst);
+    }
+    else
+    {
+        TheBuilder.CreateRetVoid();
+    }
+    
+    //Pop back
+    generator.popFunction();
+    TheBuilder.SetInsertPoint(&(generator.getCurFunction())->getBasicBlockList().back());
+    return function;
+}
+```
+
+#### 3.3.12 函数/过程调用
+
+函数调用和过程调用类似：
+
+- 从Module查找函数名称从而获取函数指针
+- 创建函数参数向量，逐个计算参数表达式的值，为了区分值传递和引用传递，需要通过Function::arg_iterator遍历函数的参数，并判断是否具有之前标记的属性：
+  - 值传递：调用代码生成计算并加载值
+  - 引用传递：直接查询符号表传递地址
+- 通过IRBuilder的CreateCall构造函数调用
+
+```C++
+llvm::Value *FunctionCall::codeGen(CodeGenerator & generator) {
+    //LOG_I("Function Call");
+    this->forward(generator);
+    llvm::Function *function = generator.TheModule->getFunction(this->function->getName());
+    if (function == nullptr)
+    {
+        throw domain_error("[ERROR] Function not defined: " + this->function->getName());
+    }
+    vector<llvm::Value*> args;
+    llvm::Function::arg_iterator argIt =  function->arg_begin();
+    for (auto & arg : *(this->args))
+    {
+        if (argIt->hasNonNullAttr())
+        {
+//            cout << "Pass a pointer" << endl;
+            llvm::Value * addr = generator.findValue(dynamic_cast<Identifier*>(arg)->getName());
+            args.push_back(addr);
+        }
+        else
+        {
+//            cout << "Pass a value" << endl;
+            args.push_back(arg->codeGen(generator));
+        }
+        argIt++;
+    }
+    llvm::Value *res = TheBuilder.CreateCall(function, args, "calltmp");
+    this->backword();
+    return res;
+}
+```
+
+#### 3.3.13 系统函数/过程
+
+本次实验基于C语言的printf和scanf设计了读写系统函数：read和write(writeln)。
+
+在CodeGenerator.h中定义了printf和scanf的原型，包括参数类型、返回值和调用环境等：
+
+```C++
+llvm::Function* createPrintf()
+{
+    std::vector<llvm::Type*> arg_types;
+    arg_types.push_back(TheBuilder.getInt8PtrTy());
+    auto printf_type = llvm::FunctionType::get(TheBuilder.getInt32Ty(), llvm::makeArrayRef(arg_types), true);
+    auto func = llvm::Function::Create(printf_type, llvm::Function::ExternalLinkage, llvm::Twine("printf"), TheModule.get());
+    func->setCallingConv(llvm::CallingConv::C);
+    return func;
+}
+    
+llvm::Function* createScanf()
+{
+    auto scanf_type = llvm::FunctionType::get(TheBuilder.getInt32Ty(), true);
+    auto func = llvm::Function::Create(scanf_type, llvm::Function::ExternalLinkage, llvm::Twine("scanf"), TheModule.get());
+    func->setCallingConv(llvm::CallingConv::C);
+    return func;
+}
+```
+
+在Program节点生成代码时在Module下创建了以上函数实例，之后即可在SysProcedureCall节点中获取函数原型并生成函数代码：
+
+- 构造函数实参，根据参数类型指定输出的格式化字符，同时生成参数值到参数向量
+
+  | 类型    | 格式化字符 | 备注                                       |
+  | ------- | ---------- | ------------------------------------------ |
+  | integer | %d         |                                            |
+  | char    | %c         |                                            |
+  | bool    | %d         | false对应0，true对应1                      |
+  | real    | %lf        | 不能为%f，因为llvm::Double类型无法用%f输入 |
+
+- 判断是否换行，writeln函数在格式字符串末尾增加换行符
+
+- 拼接格式化字符串和参数向量
+
+- 通过IRBuilder调用函数
+
+```C++
+llvm::Value *SysProcedureCall::SysProcWrite(CodeGenerator & generator, bool isLineBreak)
+{
+    string formatStr = "";
+    vector<llvm::Value*> params;
+    for (auto & arg : *(this->args))
+    {
+        llvm::Value* argValue = arg->codeGen(generator);
+        if (argValue->getType() == TheBuilder.getInt32Ty())
+        {
+            formatStr += "%d";
+        }
+        else if (argValue->getType() == TheBuilder.getInt8Ty())
+        {
+            formatStr += "%c";
+        }
+        else if (argValue->getType() == TheBuilder.getInt1Ty())
+        {
+            formatStr += "%d";
+        }
+        else if (argValue->getType()->isDoubleTy())
+        {
+            formatStr += "%lf";
+        }
+        else
+        {
+            throw logic_error("[ERROR]Invalid type to write.");
+        }
+        params.push_back(argValue);
+    }
+    if (isLineBreak)
+    {
+        formatStr += "\n";
+    }
+    auto formatConst = llvm::ConstantDataArray::getString(TheContext, formatStr.c_str());
+    auto formatStrVar = new llvm::GlobalVariable(*(generator.TheModule), llvm::ArrayType::get(TheBuilder.getInt8Ty(), formatStr.size() + 1), true, llvm::GlobalValue::ExternalLinkage, formatConst, ".str");
+    auto zero = llvm::Constant::getNullValue(TheBuilder.getInt32Ty());
+    llvm::Constant* indices[] = {zero, zero};
+    auto varRef = llvm::ConstantExpr::getGetElementPtr(formatStrVar->getType()->getElementType(), formatStrVar, indices);
+//    auto varRef
+    params.insert(params.begin(), varRef);
+    return TheBuilder.CreateCall(generator.printf, llvm::makeArrayRef(params), "printf");
+}
+```
+
+```C++
+llvm::Value *SysProcedureCall::SysProcRead(CodeGenerator & generator)
+{
+    string formatStr = "";
+    vector<llvm::Value*> params;
+    auto arg = this->args->front();
+    llvm::Value *argAddr, *argValue;
+    //Just common variable
+    argAddr = generator.findValue(dynamic_cast<Identifier*>(arg)->getName());
+    argValue = arg->codeGen(generator);
+    if (argValue->getType() == TheBuilder.getInt32Ty())
+    {
+        formatStr += "%d";
+    }
+    else if (argValue->getType() == TheBuilder.getInt8Ty())
+    {
+        formatStr += "%c";
+    }
+    else if (argValue->getType() == TheBuilder.getInt1Ty())
+    {
+        formatStr += "%d";
+    }
+    else if (argValue->getType()->isDoubleTy())
+    {
+        formatStr += "%lf";
+    }
+    else
+    {
+        throw logic_error("[ERROR]Invalid type to read.");
+    }
+    params.push_back(argAddr);
+    params.insert(params.begin(), TheBuilder.CreateGlobalStringPtr(formatStr));
+    return TheBuilder.CreateCall(generator.scanf, params, "scanf");
+}
+```
+
+#### 3.3.14 分支语句
+
+##### 3.3.14.1 if语句
+
+if语句可以被抽象为四个基础块：
+
+- ifCond：条件判断基础块，计算条件表达式的值并创建跳转分支
+- then：条件为真执行的基础块，结束之后跳转到merge基础块
+- else：条件为假执行的基础块，结束之后跳转到merge基础块，对于没有else部分的分支语句我们创建一个空的else基础块来达到简化代码的目的
+- merge：if语句结束之后的基础块，作为后面代码的插入点
+
+以上基础快跳转的DAG图：
+
+![cfgif](image/cfgif.png)
+
+```C++
+llvm::Value *IfStatement::codeGen(CodeGenerator & generator) {
+    LOG_I("If Statement");
+    this->forward(generator);
+    
+    llvm::Value *condValue = this->condition->codeGen(generator), *thenValue = nullptr, *elseValue = nullptr;
+    condValue = TheBuilder.CreateICmpNE(condValue, llvm::ConstantInt::get(llvm::Type::getInt1Ty(TheContext), 0, true), "ifCond");
+
+    llvm::Function *TheFunction = generator.getCurFunction();
+    llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(TheContext, "then", TheFunction);
+    llvm::BasicBlock *elseBB = llvm::BasicBlock::Create(TheContext, "else", TheFunction);
+    llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(TheContext, "merge", TheFunction);
+
+    //Then
+    auto branch = TheBuilder.CreateCondBr(condValue, thenBB, elseBB);
+    TheBuilder.SetInsertPoint(thenBB);
+    thenValue = this->thenStatement->codeGen(generator);
+    TheBuilder.CreateBr(mergeBB);
+    thenBB = TheBuilder.GetInsertBlock();
+
+    //Else
+    TheBuilder.SetInsertPoint(elseBB);
+    if (this->elseStatement != nullptr)
+    {
+        elseValue = this->elseStatement->codeGen(generator);
+    }
+    TheBuilder.CreateBr(mergeBB);
+    elseBB = TheBuilder.GetInsertBlock();
+
+    //Merge
+    TheBuilder.SetInsertPoint(mergeBB);
+    
+    this->backword();
+    return branch;
+}
+```
+
+##### 3.3.14.2 case语句
+
+case语句可以看作多个if语句，本实验将其抽象为多个基础块对和一个after基础块，事先计算好表达式的值之后，进入第一个基础块对，每个基础块对的第一块判断条件值是否与当前值相等，相等则跳转到第二块，第二块执行完毕后跳转到after基础块执行case语句之后的代码，否则跳转到下一对基础块对，下一个基础块对同样如此，直到最后一个基础块对时，不管是否相等都需要跳转到after基础块，以下是具有三个分支语句的case语句DAG：
+
+<img src="image/cfgcase.png" alt="cfgcase" style="zoom: 67%;" />
+
+```c++
+llvm::Value *CaseStatement::codeGen(CodeGenerator & generator) {
+    LOG_I("Case Statement");
+    this->forward(generator);
+    
+    llvm::Value *cmpValue = this->value->codeGen(generator), *condValue = nullptr;
+    llvm::Function *TheFunction = generator.getCurFunction();
+    llvm::BasicBlock *switchBB = llvm::BasicBlock::Create(TheContext, "switch", TheFunction);
+    llvm::BasicBlock *afterBB = llvm::BasicBlock::Create(TheContext, "afterCase", TheFunction);
+    vector<llvm::BasicBlock*> caseBBs;
+    for (int i = 1; i <= this->caseExprList->size(); i++)
+    {
+        caseBBs.push_back(llvm::BasicBlock::Create(TheContext, "case", TheFunction));
+    }
+    
+    auto branch = TheBuilder.CreateBr(switchBB);
+    for (int i = 0; i < this->caseExprList->size(); i++)
+    {
+        //Switch
+        TheBuilder.SetInsertPoint(switchBB);
+        condValue = BinaryOp(cmpValue, BinaryExpression::SPL_EQUAL, (*caseExprList)[i]->value->codeGen(generator));
+        if (i < this->caseExprList->size() - 1)
+        {
+            TheBuilder.CreateCondBr(condValue, caseBBs[i], caseBBs[i + 1]);
+        }
+        else
+        {
+            TheBuilder.CreateCondBr(condValue, caseBBs[i], afterBB);
+        }
+        switchBB = TheBuilder.GetInsertBlock();
+        
+        //Case
+        TheBuilder.SetInsertPoint(caseBBs[i]);
+        (*caseExprList)[i]->codeGen(generator);
+        TheBuilder.CreateBr(afterBB);
+    }
+    
+    //Default
+    TheBuilder.SetInsertPoint(switchBB);
+    TheBuilder.CreateBr(afterBB);
+    
+    //After
+    TheBuilder.SetInsertPoint(afterBB);
+    this->backword();
+    return branch;
+}
+```
+
+#### 3.3.15 循环语句
+
+##### 3.3.15.1 for语句
+
+for语句可以被抽象为三个基础块：
+
+- forCond：计算条件表达式的值，判断循环条件，为真进入loop块，否则进入afterLoop块
+- loop：条件为真时执行的循环体基础块，完成循环变量的递增或递减，之后跳转到forCond基础块
+- afterLoop：跳出循环之后执行的基础块，作为之后代码的插入点
+
+![cfgfor](image/cfgfor.png)
+
+```C++
+llvm::Value *ForStatement::codeGen(CodeGenerator & generator) {
+    LOG_I("For Statement");
+    this->forward(generator);
+    //Init
+    llvm::Function *TheFunction = generator.getCurFunction();
+    llvm::Value* startValue = this->value->codeGen(generator);
+    llvm::Value* endValue = this->step->codeGen(generator);
+    llvm::Value *condValue = nullptr, *curValue = nullptr, *varValue = generator.findValue(this->var->getName());
+    TheBuilder.CreateStore(startValue, varValue);
+    
+    llvm::BasicBlock *condBB = llvm::BasicBlock::Create(TheContext, "cond", TheFunction);
+    llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
+    llvm::BasicBlock *afterBB = llvm::BasicBlock::Create(TheContext, "afterLoop", TheFunction);
+    
+    //Cond
+    TheBuilder.CreateBr(condBB);
+    TheBuilder.SetInsertPoint(condBB);
+//    curValue = TheBuilder.CreateLoad(varValue, this->var->getName());
+    curValue = this->var->codeGen(generator);
+    if (this->isAdd)
+    {
+        condValue = TheBuilder.CreateICmpSLE(curValue, endValue);
+    }
+    else
+    {
+        condValue = TheBuilder.CreateICmpSGE(curValue, endValue);
+    }
+    condValue = TheBuilder.CreateICmpNE(condValue, llvm::ConstantInt::get(llvm::Type::getInt1Ty(TheContext), 0, true), "forCond");
+    auto branch = TheBuilder.CreateCondBr(condValue, loopBB, afterBB);
+    condBB = TheBuilder.GetInsertBlock();
+    
+    //Loop
+    TheBuilder.SetInsertPoint(loopBB);
+    this->stmt->codeGen(generator);
+    llvm::Value *tmpValue = TheBuilder.CreateAdd(curValue, TheBuilder.getInt32(this->isAdd ? 1 : -1));
+    TheBuilder.CreateStore(tmpValue, varValue);
+    TheBuilder.CreateBr(condBB);
+    loopBB = TheBuilder.GetInsertBlock();
+    
+    //After
+    TheBuilder.SetInsertPoint(afterBB);
+    this->backword();
+    return branch;
+}
+```
+
+##### 3.3.15.2 while语句
+
+while语句类似for语句，区别在于loop基础块中没有循环变量的递增、递减操作：
+
+![cfgwhile](image/cfgwhile.png)
+
+```C++
+llvm::Value *WhileStatement::codeGen(CodeGenerator & generator) {
+    LOG_I("While Statement");
+    this->forward(generator);
+    llvm::Function *TheFunction = generator.getCurFunction();
+    llvm::BasicBlock *condBB = llvm::BasicBlock::Create(TheContext, "cond", TheFunction);
+    llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
+    llvm::BasicBlock *afterBB = llvm::BasicBlock::Create(TheContext, "afterLoop", TheFunction);
+    
+    //Cond
+    TheBuilder.CreateBr(condBB);
+    TheBuilder.SetInsertPoint(condBB);
+    llvm::Value *condValue = this->condition->codeGen(generator);
+    condValue = TheBuilder.CreateICmpNE(condValue, llvm::ConstantInt::get(llvm::Type::getInt1Ty(TheContext), 0, true), "whileCond");
+    auto branch = TheBuilder.CreateCondBr(condValue, loopBB, afterBB);
+    condBB = TheBuilder.GetInsertBlock();
+    
+    //Loop
+    TheBuilder.SetInsertPoint(loopBB);
+    this->stmt->codeGen(generator);
+    TheBuilder.CreateBr(condBB);
+    
+    //After
+    TheBuilder.SetInsertPoint(afterBB);
+    this->backword();
+    return branch;
+}
+```
+
+##### 3.3.15.3 repeat语句
+
+repeat语句与while语句类似，区别在于先进入loop基础块，因此loop块一定会执行：
+
+![cfgrepeat](image/cfgrepeat.png)
+
+```C++
+llvm::Value *RepeatStatement::codeGen(CodeGenerator & generator) {
+    LOG_I("Repeate Statement");
+    this->forward(generator);
+    
+    llvm::Function *TheFunction = generator.getCurFunction();
+    llvm::BasicBlock *condBB = llvm::BasicBlock::Create(TheContext, "cond", TheFunction);
+    llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
+    llvm::BasicBlock *afterBB = llvm::BasicBlock::Create(TheContext, "afterLoop", TheFunction);
+    
+    //Loop
+    TheBuilder.CreateBr(loopBB);
+    TheBuilder.SetInsertPoint(loopBB);
+    for (auto & stmt : *(this->repeatStatement))
+    {
+        stmt->codeGen(generator);
+    }
+    TheBuilder.CreateBr(condBB);
+    loopBB = TheBuilder.GetInsertBlock();
+    
+    //Cond
+    TheBuilder.SetInsertPoint(condBB);
+    llvm::Value *condValue = this->condition->codeGen(generator);
+    condValue = TheBuilder.CreateICmpNE(condValue, llvm::ConstantInt::get(llvm::Type::getInt1Ty(TheContext), 0, true), "repeateCond");
+    auto branch = TheBuilder.CreateCondBr(condValue, loopBB, afterBB);
+    
+    //After
+    TheBuilder.SetInsertPoint(afterBB);
+    this->backword();
+    return branch;
+}
+```
+
+#### 3.3.16 goto语句
+
+goto语句要求记录语句的标签，所以在CodeGenerotor中我们使用一个基础块指针向量来记录所有带标签块的地址，向量的下标就作为标签进行索引，在语法分析部分会将带标签语句的标签置为相应值，无标签语句的标签默认为-1。
+
+所有继承自Statement类的语句均可携带标签，因此在这些语句代码生成的过程中需要判断是否携带标签，是则需要构建新的基础块作为代码插入点并将基础块记录在基础块向量中，在代码生成完毕需要从当前基础块跳转到正常的基础块进行代码生成，本实验直接提供一个after基础块作为新的插入点。
+
+以下是三个带标签的语句在标签1语句使用`goto 3;`代码前后的DAG变化：
+
+<img src="image/cfggoto1.png" style="width: 25%;" />             <img src="image/cfggoto2.png" style="width:40%;" />
+
+为了实现插入基础块和恢复新的插入点，本实验定义了forward和backward两个辅助函数：
+
+- forward：带标签语句调用forward，负责生成新的标签基础块和新的after基础块，跳转到新的基础块并设置其为插入点
+
+```C++
+void Statement::forward(CodeGenerator & generator)
+{
+    llvm::Function *TheFunction = generator.getCurFunction();
+    if (this->label >= 0)
+    {
+        if (generator.labelBlock[label] == nullptr)
+        {
+            generator.labelBlock[label] = llvm::BasicBlock::Create(TheContext, "Label_" + to_string(label), TheFunction);
+        }
+        if (this->afterBB == nullptr)
+        {
+            this->afterBB = llvm::BasicBlock::Create(TheContext, "afterLabel_" + to_string(this->label), TheFunction);
+        }
+        TheBuilder.CreateBr(generator.labelBlock[label]);
+        TheBuilder.SetInsertPoint(generator.labelBlock[label]);
+    }
+}
+```
+
+- backward：带标签语句调用backward，负责跳转到after基础块并将其设置为代码插入点
+
+```C++
+void Statement::backword()
+{
+    if (this->label >= 0 && afterBB != nullptr)
+    {
+        TheBuilder.CreateBr(this->afterBB);
+        TheBuilder.SetInsertPoint(this->afterBB);
+    }
+}
+```
+
+现在goto语句代码生成时，先判断标签是否有效，是则跳转到该标签对应的基础块，需要注意的是：
+
+- 跳转到的标签在此标签语句之后：先判断该标签对应基础块是否为空，是则提前创建一块作为dummy基础块，等真正的标签语句生成时直接使用该块即可
+- goto语句本身也可携带标签：给goto语句套上forward和backward函数即可
+
+```C++
+llvm::Value *GotoStatement::codeGen(CodeGenerator & generator) {
+    LOG_I("Goto Statement");
+    this->forward(generator);
+    llvm::Value *res = nullptr;
+    if (generator.labelBlock[this->toLabel] == nullptr)
+    {
+        generator.labelBlock[this->toLabel] = llvm::BasicBlock::Create(TheContext, "Label_" + to_string(this->toLabel), generator.getCurFunction());
+    }
+    res = TheBuilder.CreateBr(generator.labelBlock[this->toLabel]);
+    this->backword();
+    return res;
+}
+```
 
 ## 第四章 优化考虑
 

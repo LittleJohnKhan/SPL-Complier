@@ -5,7 +5,7 @@ using namespace std;
 
 void LOG_I(const string & msg)
 {
-    cout << "[INFO]" << msg << endl;
+    //cout << "[INFO]" << msg << endl;
 }
 
 void printType(llvm::Value* v)
@@ -203,34 +203,34 @@ llvm::Value *BinaryOp(llvm::Value *lValue, BinaryExpression::BinaryOperator op, 
 }
 
 llvm::Value *Identifier::codeGen(CodeGenerator & generator) {
-//    LOG_I("Idnetifier");
+    LOG_I("Idnetifier");
 //    return TheBuilder.CreateLoad(generator.findValue(*(this->name)), *(this->name));
     return new llvm::LoadInst(generator.findValue(*(this->name)), "tmp", false, TheBuilder.GetInsertBlock());
 }
 
 llvm::Value *Integer::codeGen(CodeGenerator & generator) {
-//    LOG_I("Integer");
+    LOG_I("Integer");
     return TheBuilder.getInt32(this->value);
 }
 
 llvm::Value *Char::codeGen(CodeGenerator & generator) {
-//    LOG_I("Char");
+    LOG_I("Char");
     return TheBuilder.getInt8(this->value);
 }
 
 llvm::Value *Real::codeGen(CodeGenerator & generator) {
-    //LOG_I("Real");
+    LOG_I("Real");
 //    return llvm::ConstantFP::get(TheContext, llvm::APFloat(this->value));
     return llvm::ConstantFP::get(TheBuilder.getDoubleTy(), this->value);
 }
 
 llvm::Value *Boolean::codeGen(CodeGenerator & generator) {
-    //LOG_I("Boolean");
+    LOG_I("Boolean");
     return TheBuilder.getInt1(this->value);
 }
 
 llvm::Value *ConstDeclaration::codeGen(CodeGenerator & generator) {
-    //LOG_I("Const Declaration");
+    LOG_I("Const Declaration");
     string name = this->name->getName();
     this->type = new AstType(this->value->getType());
     if (this->isGlobal())
@@ -245,12 +245,12 @@ llvm::Value *ConstDeclaration::codeGen(CodeGenerator & generator) {
 }
 
 llvm::Value *TypeDeclaration::codeGen(CodeGenerator & generator) {
-    //LOG_I("Type Declaration");
+    LOG_I("Type Declaration");
     return nullptr;
 }
 
 llvm::Value *AstType::codeGen(CodeGenerator & generator) {
-    //LOG_I("Type");
+    LOG_I("Type");
     switch (this->type)
     {
         case SPL_ARRAY: this->arrayType->codeGen(generator); break;
@@ -266,18 +266,18 @@ llvm::Value *AstType::codeGen(CodeGenerator & generator) {
 }
 
 llvm::Value *EnumType::codeGen(CodeGenerator & generator) {
-    //LOG_I("Enum Type");
+    LOG_I("Enum Type");
     //TODO
     return nullptr;
 }
 
 llvm::Value *AstArrayType::codeGen(CodeGenerator & generator) {
-    //LOG_I("Array Type");
+    LOG_I("Array Type");
     return this->range->codeGen(generator);
 }
 
 llvm::Value *RecordType::codeGen(CodeGenerator & generator) {
-    //LOG_I("Record Type");
+    LOG_I("Record Type");
     return nullptr;
 }
 
@@ -287,7 +287,7 @@ llvm::Value *ConstRangeType::mapIndex(llvm::Value *indexValue, CodeGenerator & g
 }
 
 llvm::Value *ConstRangeType::codeGen(CodeGenerator & generator) {
-    //LOG_I("Const Range Type");
+    LOG_I("Const Range Type");
     this->size();
     return nullptr;
 }
@@ -325,7 +325,7 @@ size_t EnumRangeType::size()
 }
 
 llvm::Value *EnumRangeType::codeGen(CodeGenerator & generator) {
-    //LOG_I("Enum Range Type");
+    LOG_I("Enum Range Type");
     this->upValue = this->upBound->codeGen(generator);
     this->lowValue = this->lowBound->codeGen(generator);
     this->upValueAddr = generator.findValue(this->upBound->getName());
@@ -335,12 +335,12 @@ llvm::Value *EnumRangeType::codeGen(CodeGenerator & generator) {
 }
 
 llvm::Value *FieldDeclaration::codeGen(CodeGenerator & generator) {
-    //LOG_I("Field Declaration");
+    LOG_I("Field Declaration");
     return nullptr;
 }
 
 llvm::Value *VarDeclaration::codeGen(CodeGenerator & generator) {
-    //LOG_I("Var Declaration");
+    LOG_I("Var Declaration");
     llvm::Value* alloc = nullptr;
     llvm::Type* varType;
     for (auto & id : *(this->nameList))
@@ -363,7 +363,7 @@ llvm::Value *VarDeclaration::codeGen(CodeGenerator & generator) {
 }
 
 llvm::Value *FuncDeclaration::codeGen(CodeGenerator & generator) {
-    //LOG_I("Function Declaration");
+    LOG_I("Function Declaration");
     //Prototype
     vector<llvm::Type*> argTypes;
     for (auto & argType : *(this->paraList))
@@ -437,13 +437,13 @@ llvm::Value *FuncDeclaration::codeGen(CodeGenerator & generator) {
 }
 
 llvm::Value *Parameter::codeGen(CodeGenerator & generator) {
-    //LOG_I("Parameter");
+    LOG_I("Parameter");
     //Not need
     return nullptr;
 }
 
 llvm::Value *Routine::codeGen(CodeGenerator & generator) {
-    //LOG_I("Routine");
+    LOG_I("Routine");
     llvm::Value* res = nullptr;
     
     //Const declareation part
@@ -473,7 +473,7 @@ llvm::Value *Routine::codeGen(CodeGenerator & generator) {
 }
 
 llvm::Value *Program::codeGen(CodeGenerator & generator) {
-    //LOG_I("Program");
+    LOG_I("Program");
     //Main function prototype
     vector<llvm::Type*> argTypes;
     llvm::FunctionType * funcType = llvm::FunctionType::get(TheBuilder.getVoidTy(), makeArrayRef(argTypes), false);
@@ -495,7 +495,7 @@ llvm::Value *Program::codeGen(CodeGenerator & generator) {
 }
 
 llvm::Value *AssignStatement::codeGen(CodeGenerator & generator) {
-    //LOG_I("Assign Statement");
+    LOG_I("Assign Statement");
     llvm::Value *res = nullptr;
     this->forward(generator);
     switch (this->type)
@@ -504,19 +504,19 @@ llvm::Value *AssignStatement::codeGen(CodeGenerator & generator) {
         case ARRAY_ASSIGN: res = TheBuilder.CreateStore(this->rhs->codeGen(generator), (new ArrayReference(this->lhs, this->sub))->getReference(generator)); break;
         case RECORD_ASSIGN: res = nullptr; break;
     }
-    this->backword();
+    this->backward(generator);
     return res;
 }
 
 llvm::Value *BinaryExpression::codeGen(CodeGenerator & generator) {
-    //LOG_I("Binary Expression");
+    LOG_I("Binary Expression");
     llvm::Value* lValue = this->lhs->codeGen(generator);
     llvm::Value* rValue = this->rhs->codeGen(generator);
     return BinaryOp(lValue, this->op, rValue);
 }
 
 llvm::Value *ArrayReference::codeGen(CodeGenerator & generator) {
-    //LOG_I("Array Reference");
+    LOG_I("Array Reference");
     return TheBuilder.CreateLoad(this->getReference(generator), "arrRef");
 }
 
@@ -539,12 +539,12 @@ llvm::Value *ArrayReference::getReference(CodeGenerator & generator)
 }
 
 llvm::Value *RecordReference::codeGen(CodeGenerator & generator) {
-    //LOG_I("Record Reference");
+    LOG_I("Record Reference");
     return nullptr;
 }
 
 llvm::Value *FunctionCall::codeGen(CodeGenerator & generator) {
-    //LOG_I("Function Call");
+    LOG_I("Function Call");
     this->forward(generator);
     llvm::Function *function = generator.TheModule->getFunction(this->function->getName());
     if (function == nullptr)
@@ -569,12 +569,12 @@ llvm::Value *FunctionCall::codeGen(CodeGenerator & generator) {
         argIt++;
     }
     llvm::Value *res = TheBuilder.CreateCall(function, args, "calltmp");
-    this->backword();
+    this->backward(generator);
     return res;
 }
 
 llvm::Value *ProcedureCall::codeGen(CodeGenerator & generator) {
-    //LOG_I("Procedure Call");
+    LOG_I("Procedure Call");
     this->forward(generator);
     llvm::Function *function = generator.TheModule->getFunction(this->function->getName());
     if (function == nullptr)
@@ -599,15 +599,15 @@ llvm::Value *ProcedureCall::codeGen(CodeGenerator & generator) {
         argIt++;
     }
     llvm::Value* res = TheBuilder.CreateCall(function, args, "calltmp");
-    this->backword();
+    this->backward(generator);
     return res;
 }
 
 llvm::Value *SysFunctionCall::codeGen(CodeGenerator & generator) {
-    //LOG_I("System Function Call");
+    LOG_I("System Function Call");
     this->forward(generator);
     //TODO::Code gen
-    this->backword();
+    this->backward(generator);
     return nullptr;
 }
 
@@ -689,7 +689,7 @@ llvm::Value *SysProcedureCall::SysProcRead(CodeGenerator & generator)
 }
 
 llvm::Value *SysProcedureCall::codeGen(CodeGenerator & generator) {
-    //LOG_I("System Procedure Call");
+    LOG_I("System Procedure Call");
     llvm::Value *res = nullptr;
     this->forward(generator);
     switch (this->procedure) {
@@ -698,12 +698,12 @@ llvm::Value *SysProcedureCall::codeGen(CodeGenerator & generator) {
         case SPL_WRITELN: res = this->SysProcWrite(generator, true); break;
         case SPL_ERROR_PROCEDURE: throw domain_error("[ERROR]Unknown System Procedure");
     }
-    this->backword();
+    this->backward(generator);
     return res;
 }
 
 llvm::Value *IfStatement::codeGen(CodeGenerator & generator) {
-    //LOG_I("If Statement");
+    LOG_I("If Statement");
     this->forward(generator);
     
     llvm::Value *condValue = this->condition->codeGen(generator), *thenValue = nullptr, *elseValue = nullptr;
@@ -741,12 +741,12 @@ llvm::Value *IfStatement::codeGen(CodeGenerator & generator) {
 //    }
     TheBuilder.SetInsertPoint(mergeBB);
     
-    this->backword();
+    this->backward(generator);
     return branch;
 }
 
 llvm::Value *RepeatStatement::codeGen(CodeGenerator & generator) {
-    //LOG_I("Repeate Statement");
+    LOG_I("Repeate Statement");
     this->forward(generator);
     
     llvm::Function *TheFunction = generator.getCurFunction();
@@ -772,12 +772,12 @@ llvm::Value *RepeatStatement::codeGen(CodeGenerator & generator) {
     
     //After
     TheBuilder.SetInsertPoint(afterBB);
-    this->backword();
+    this->backward(generator);
     return branch;
 }
 
 llvm::Value *WhileStatement::codeGen(CodeGenerator & generator) {
-    //LOG_I("While Statement");
+    LOG_I("While Statement");
     this->forward(generator);
     llvm::Function *TheFunction = generator.getCurFunction();
     llvm::BasicBlock *condBB = llvm::BasicBlock::Create(TheContext, "cond", TheFunction);
@@ -799,12 +799,12 @@ llvm::Value *WhileStatement::codeGen(CodeGenerator & generator) {
     
     //After
     TheBuilder.SetInsertPoint(afterBB);
-    this->backword();
+    this->backward(generator);
     return branch;
 }
 
 llvm::Value *ForStatement::codeGen(CodeGenerator & generator) {
-    //LOG_I("For Statement");
+    LOG_I("For Statement");
     this->forward(generator);
     //Init
     llvm::Function *TheFunction = generator.getCurFunction();
@@ -844,47 +844,52 @@ llvm::Value *ForStatement::codeGen(CodeGenerator & generator) {
     
     //After
     TheBuilder.SetInsertPoint(afterBB);
-    this->backword();
+    this->backward(generator);
     return branch;
 }
 
 llvm::Value *CaseStatement::codeGen(CodeGenerator & generator) {
-    //LOG_I("Case Statement");
+    LOG_I("Case Statement");
     this->forward(generator);
     
     llvm::Value *cmpValue = this->value->codeGen(generator), *condValue = nullptr;
     llvm::Function *TheFunction = generator.getCurFunction();
-    llvm::BasicBlock *switchBB = llvm::BasicBlock::Create(TheContext, "switch", TheFunction);
     llvm::BasicBlock *afterBB = llvm::BasicBlock::Create(TheContext, "afterCase", TheFunction);
-    
-    auto branch = TheBuilder.CreateBr(switchBB);
-    for (auto & caseExp : *(this->caseExprList))
+    vector<llvm::BasicBlock*> switchBBs, caseBBs;
+    for (int i = 1; i <= this->caseExprList->size(); i++)
+    {
+        switchBBs.push_back(llvm::BasicBlock::Create(TheContext, "switch", TheFunction));
+        caseBBs.push_back(llvm::BasicBlock::Create(TheContext, "case", TheFunction));
+    }
+    TheBuilder.CreateBr(switchBBs[0]);
+    for (int i = 0; i < this->caseExprList->size(); i++)
     {
         //Switch
-        TheBuilder.SetInsertPoint(switchBB);
-        condValue = BinaryOp(cmpValue, BinaryExpression::SPL_EQUAL, caseExp->value->codeGen(generator));
-        llvm::BasicBlock *caseBB = llvm::BasicBlock::Create(TheContext, "case", TheFunction);
-        TheBuilder.CreateCondBr(condValue, caseBB, switchBB);
-        switchBB = TheBuilder.GetInsertBlock();
+        TheBuilder.SetInsertPoint(switchBBs[i]);
+        condValue = BinaryOp(cmpValue, BinaryExpression::SPL_EQUAL, (*caseExprList)[i]->value->codeGen(generator));
+        if (i < this->caseExprList->size() - 1)
+        {
+            TheBuilder.CreateCondBr(condValue, caseBBs[i], switchBBs[i + 1]);
+        }
+        else
+        {
+            TheBuilder.CreateCondBr(condValue, caseBBs[i], afterBB);
+        }
         
         //Case
-        TheBuilder.SetInsertPoint(caseBB);
-        caseExp->codeGen(generator);
+        TheBuilder.SetInsertPoint(caseBBs[i]);
+        (*caseExprList)[i]->codeGen(generator);
         TheBuilder.CreateBr(afterBB);
     }
     
-    //Default
-    TheBuilder.SetInsertPoint(switchBB);
-    TheBuilder.CreateBr(afterBB);
-    
     //After
     TheBuilder.SetInsertPoint(afterBB);
-    this->backword();
-    return branch;
+    this->backward(generator);
+    return nullptr;
 }
 
 llvm::Value *CaseExpression::codeGen(CodeGenerator & generator) {
-    //LOG_I("Case Expression");
+    LOG_I("Case Expression");
     return this->stmt->codeGen(generator);
 }
 
@@ -893,30 +898,31 @@ void Statement::forward(CodeGenerator & generator)
     llvm::Function *TheFunction = generator.getCurFunction();
     if (this->label >= 0)
     {
-        if (generator.labelBlock[label] == nullptr)
+        if (generator.labelBlock[this->label] == nullptr)
         {
-            generator.labelBlock[label] = llvm::BasicBlock::Create(TheContext, "Label_" + to_string(label), TheFunction);
+            generator.labelBlock[this->label] = llvm::BasicBlock::Create(TheContext, "Label_" + to_string(label), TheFunction);
         }
         if (this->afterBB == nullptr)
         {
             this->afterBB = llvm::BasicBlock::Create(TheContext, "afterLabel_" + to_string(this->label), TheFunction);
         }
-        TheBuilder.CreateBr(generator.labelBlock[label]);
-        TheBuilder.SetInsertPoint(generator.labelBlock[label]);
+        TheBuilder.CreateBr(generator.labelBlock[this->label]);
+        TheBuilder.SetInsertPoint(generator.labelBlock[this->label]);
     }
 }
 
-void Statement::backword()
+void Statement::backward(CodeGenerator & generator)
 {
     if (this->label >= 0 && afterBB != nullptr)
     {
+        TheBuilder.SetInsertPoint(generator.labelBlock[this->label]);
         TheBuilder.CreateBr(this->afterBB);
         TheBuilder.SetInsertPoint(this->afterBB);
     }
 }
 
 llvm::Value *GotoStatement::codeGen(CodeGenerator & generator) {
-    //LOG_I("Goto Statement");
+    LOG_I("Goto Statement");
     this->forward(generator);
     llvm::Value *res = nullptr;
     if (generator.labelBlock[this->toLabel] == nullptr)
@@ -929,19 +935,19 @@ llvm::Value *GotoStatement::codeGen(CodeGenerator & generator) {
 //        this->afterBB = llvm::BasicBlock::Create(TheContext, "afterLabel_" + to_string(this->toLabel), generator.getCurFunction());
 //    }
 //    TheBuilder.SetInsertPoint(this->afterBB);
-    this->backword();
+    this->backward(generator);
     return res;
 }
 
 llvm::Value *CompoundStatement::codeGen(CodeGenerator & generator) {
-    //LOG_I("CompoundStatement");
+    LOG_I("CompoundStatement");
     this->forward(generator);
     llvm::Value *lastValue = nullptr;
     for (auto & stmt : *(this->stmtList))
     {
         lastValue = stmt->codeGen(generator);
     }
-    this->backword();
+    this->backward(generator);
     return lastValue;
 }
 
