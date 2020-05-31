@@ -1,6 +1,71 @@
+# 编译原理实验报告
+
+[TOC]
+
 ## 序言
 
-（包括对整个编译器的描述，对所提交的各个文件的说明，组员的分工）
+### 3.1 概述
+
+本次实验小组基于C++语言设计并实现了一个SPL语言的编译系统，该系统以符合SPL语言规范的代码文本文输入，输出为指定机器的目标代码。该SPL编译器的设计实现涵盖词法分析、语法分析、语义分析、优化考虑、代码生成等阶段和环节，所使用的具体技术包括但不限于：
+
+- Flex实现词法分析
+- Bison实现语法分析
+- LLVM实现代码优化、中间代码生成、目标代码生成
+- D3.JS实现AST可视化
+- LLVM+Graphviz实现CFG可视化
+
+![image-20200531023300128](image/SPLArchitecture.jpg)
+
+### 3.2 开发环境
+
+- 操作系统：MacOS（推荐使用）或Linux
+- 编译环境：
+  - Flex 2.5.35 Apple(flex-32)
+  - Bison 2.3 (GNU Bison)
+  - LLVM 9.0.0
+- 编辑器：XCode, Vim
+
+### 3.3 文件说明
+
+本次实验提交的文件及其说明如下：
+
+- src：源代码文件夹
+
+  - spl.l：Flex源代码，主要实现词法分析，生成Token
+  - spl.y：Yacc源代码，主要实现语法分析，生成抽象语法树
+  - tokenizer.cpp：Flex根据spl.l生成的词法分析器
+  - parser.hpp：Yacc根据spl.y生成的语法分析器头文件
+  - parser.cpp：Yacc根据spl.y生成的语法分析器C++文件
+  - ast.h：抽象语法树头文件，定义所有AST节点类
+  - ast.cpp：抽象语法树实现文件，主要包含`codeGen`和`getJoson`方法的实现
+  - CodeGenerator.h：中间代码生成器头文件，定义生成器环境
+  - CodeGenerator.cpp：中间代码生成器实现文件
+  - main.cpp：主函数所在文件，主要负责调用词法分析器、语法分析器、代码生成器
+  - util.h：项目的工具函数文件
+  - Makefile：定义编译链接规则
+  - tree.json：基于AST生成的JSON文件
+  - tree.html：可视化AST的网页文件
+  - spl：编译器可执行程序
+
+- doc：报告文档文件夹
+
+  - report.pdf：报告文档
+
+  - Slides.pdf：展示文档
+
+- test：测试用例文件夹
+
+  - testX.pas：SPL源程序测试用例
+
+### 3.4 组员分工
+
+| 组员   | 具体分工                      |
+| :----- | :---------------------------- |
+| 杨建伟 | 词法分析，语法分析，AST可视化 |
+| 陈锰   | 语义分析，中间代码生成        |
+| 席吉华 | 运行环境设计，目标代码生成    |
+
+
 
 ## 第壱章 词法分析
 
@@ -139,7 +204,7 @@ extern "C" int yywrap() { }
                                                         } 
 ```
 
-然后其他需要额外保存值的单词
+然后其他需要额外保存值的单词：
 
 ```c
 "boolean"|"char"|"integer"|"real"                       {
@@ -188,8 +253,6 @@ extern "C" int yywrap() { }
 
 ## 第弐章 语法分析
 
-（上下文无关文法实现原理和方法）
-
 在计算机科学和语言学中，语法分析是根据某种给定的形式文法对由单词序列（如英语单词序列）构成的输入文本进行分析并确定其语法结构的一种过程。在词法分析阶段，编译器接收词法分析器发送的标记序列，最终输出抽象语法树数据结构。
 
 ### 3.1 Yacc
@@ -199,7 +262,7 @@ SPL编译器的语法分析使用Yacc（Bison）完成。Yacc是Unix/Linux上一
 与Lex相似，Yacc的输入文件由以%%分割的三部分组成，分别是声明区、规则区和程序区。三部分的功能与Lex相似，不同的是规则区的正则表达式替换为CFG，在声明区要提前声明好使用到的终结符以及非终结符的类型。
 
 ```c
-	declarations
+  declarations
   %%
   rules
   %%
@@ -548,7 +611,89 @@ private:
 %type<compoundStatement>                routine_body compound_stmt 
 ```
 
-接着按从下往上的顺序构造语法树，具体代码见spl.y。
+接着按从下往上的顺序构造语法树，部分文法如下：
+
+```c
+%start program
+%%
+// 
+name: IDENTIFIER                                            { $$ = new Identifier($1); }
+                                                            ;
+                                                            
+program: program_head routine DOT                           { $$ = new Program($1, $2); root = $$; }
+                                                            ;
+                                                            
+program_head: PROGRAM IDENTIFIER SEMI                       { $$ = $2; }
+                                                            ;
+                                                            
+routine: routine_head routine_body                          { $$ = $1; $$->setRoutineBody($2); }
+                                                            ;
+                                                            
+routine_head: const_part  type_part  var_part  routine_part { $$ = new Routine($1, $2, $3, $4); }
+                                                            ;
+                                                            
+const_part :                                                
+    CONST  const_expr_list                                  { $$ = $2; }
+    |                                                       { $$ = new ConstDeclList(); }
+                                                            ;
+const_expr_list :                                           
+    const_expr_list  name  EQUAL  const_value  SEMI         { $$ = $1; $$->push_back(new ConstDeclaration($2, $4)); }
+    |  name  EQUAL  const_value  SEMI                       { $$ = new ConstDeclList(); $$->push_back(new ConstDeclaration($1, $3)); }
+                                                            ;
+const_value :                                               
+    INTEGER                                                 { $$ = new Integer($1); }
+    |  REAL                                                 { $$ = new Real($1); }
+    |  CHAR                                                 { $$ = new Char($1); }
+    |  SYS_CON                                              {
+                                                                if(*$1 == "true")
+                                                                    $$ = new Boolean(true);
+                                                                else if(*$1 == "false")
+                                                                    $$ = new Boolean(false);
+                                                                else
+                                                                    $$ = new Integer(0x7FFFFFFF);
+                                                            }
+                                                            ;
+                                                            
+type_part :                                                 
+    TYPE type_decl_list                                     { $$ = $2; }
+    |                                                       { $$ = new TypeDeclList(); }
+                                                            ;
+                                                            
+type_decl_list :                                            
+    type_decl_list  type_definition                         { $$ = $1; $$->push_back($2); }
+    |  type_definition                                      { $$ = new TypeDeclList(); $$->push_back($1); }
+                                                            ;
+                                                            
+type_definition :                                           
+    name  EQUAL  type_decl  SEMI                            { $$ = new TypeDeclaration($1, $3); }
+                                                            ;
+                                                            
+type_decl :                                                 
+    simple_type_decl                                        { $$ = $1; }
+    |  array_type_decl                                      { $$ = $1; }
+    |  record_type_decl                                     { $$ = $1; }
+                                                            ;
+simple_type_decl :                                          
+    SYS_TYPE                                                {
+                                                                if(*$1 == "integer")
+                                                                    $$ = new AstType(SPL_INTEGER);
+                                                                else if(*$1 == "boolean")
+                                                                    $$ = new AstType(SPL_BOOLEAN);
+                                                                else if(*$1 == "real")
+                                                                    $$ = new AstType(SPL_REAL);
+                                                                else if(*$1 == "char")
+                                                                    $$ = new AstType(SPL_CHAR);
+                                                                else
+                                                                    cout << "UNKNOWN SYS_TYPE" << endl;
+                                                            }
+    |  name                                                 { $$ = new AstType($1); }
+    |  LP  name_list  RP                                    { $$ = new AstType(new EnumType($2)); }
+    |  const_value  DOTDOT  const_value                     { $$ = new AstType(new ConstRangeType($1, $3)); }
+    |  MINUS  const_value  DOTDOT  const_value              { $$ = new AstType(new ConstRangeType(-*$2, $4)); }
+    |  MINUS  const_value  DOTDOT  MINUS  const_value       { $$ = new AstType(new ConstRangeType(-*$2, -*$5)); }
+    |  name  DOTDOT  name                                   { $$ = new AstType(new EnumRangeType($1, $3)); }
+                                                            ;
+```
 
 ### 3.4 抽象语法树可视化 
 
@@ -561,13 +706,262 @@ private:
 3. 在tree.html下构建一个服务器，推荐使用VSCode的liveServer，也可以自己搭建一个apache服务器，注意要把tree.html和tree.json放在同一路径下
 4. 打开浏览器，输入服务器地址，即可看到树图。
 
-效果如下
+JSON数据获取函数：
+
+```C++
+string getJsonString(string name) {
+    return "{ \"name\" : \"" + name + "\" }";
+}
+
+string getJsonString(string name, vector<string> children) {
+    string result = "{ \"name\" : \"" + name + "\", \"children\" : [ ";
+    int i = 0;
+    for(auto &child : children) {
+        if(i != children.size() - 1)
+            result += child + ", ";
+        else 
+            result += child + " ";
+        i++;
+    }
+    return result + " ] }";
+}
+
+string getJsonString(string name, string value) {
+    return getJsonString(name, vector<string>{value});
+}
+
+string getJsonString(string name, string value, vector<string> children) {
+    string result = "{ \"name\" : \"" + name + "\", \"value\" : \"" + value + "\", \"children\" : [ ";
+    int i = 0;
+    for(auto &child : children) {
+        if(i != children.size() - 1)
+            result += child + ", ";
+        else 
+            result += child + " ";
+        i++;
+    }
+    return result + " ] }";
+}
+```
+
+具体效果如下：
 
 ![AST](./image/ASTVisual.png)
 
 ## 第参章 语义分析
 
-（实现方法）
+### 3.1 LLVM概述
+
+LLVM(Low Level Virtual Machine)是以C++编写的编译器基础设施，包含一系列模块化的编译器组件和工具教练用俩开发编译器前端和后端。LLVM起源于2000年伊利诺伊大学Vikram Adve和Chris Lattner的研究，它是为了任意一种编程语言而写成的程序，利用虚拟技术创造出编译阶段、链接阶段、运行阶段以及闲置阶段的优化，目前支持Ada、D语言、Fortran、GLSL、Java字节码、Swift、Python、Ruby等十多种语言。
+
+- 前端：LLVM最初被用来取代现有于GCC堆栈的代码产生器，许多GCC的前端已经可以与其运行，其中Clang是一个新的编译器，同时支持C、Objective-C以及C++。
+- 中间端：LLVM IR是一种类似汇编的底层语言，一种强类型的精简指令集，并对目标指令集进行了抽象。LLVM支持C++中对象形式、序列化bitcode形式和汇编形式。
+- 后端：LLVM支持ARM、Qualcomm Hexagon、MPIS、Nvidia并行指令集等多种后端指令集。
+
+### 3.2 LLVM IR
+
+LLVM IR是LLVM的核心所在，通过将不同高级语言的前端变换成LLVM IR进行优化、链接后再传给不同目标的后端转换成为二进制代码，前端、优化、后端三个阶段互相解耦，这种模块化的设计使得LLVM优化不依赖于任何源码和目标机器。
+
+![image-20200531034803706](image/LLVM.png)
+
+#### 3.2.1 IR布局
+
+每个IR文件称为一个Module，它是其他所有IR对象的顶级容器，包含了目标信息、全局符号和所依赖的其他模块和符号表等对象的列表，其中全局符号又包括了全局变量、函数声明和函数定义。
+
+函数由参数和多个基本块组成，其中第一个基本块称为entry基本块，这是函数开始执行的起点，另外LLVM的函数拥有独立的符号表，可以对标识符进行查询和搜索。
+
+每一个基本块包含了标签和各种指令的集合，标签作为指令的索引用于实现指令间的跳转，指令包含Phi指令、一般指令以及终止指令等。
+
+![image-20200531035534123](image/LLVM_layout.png)
+
+#### 3.2.2 IR上下文环境
+
+- LLVM::Context：提供用户创建变量等对象的上下文环境，尤其在多线程环境下至关重要
+- LLVM::IRBuilder：提供创建LLVM指令并将其插入基础块的API
+
+#### 3.2.3 IR核心类
+
+![image-20200531110455232](image/LLVMclass.png)
+
+- llvm::Value表示一个类型的值，具有一个llvm::Type*成员和一个use list，前者指向值的类型类，后者跟踪使用了该值的其他对象，可以通过迭代器进行访问。
+
+  - 值的存取分别可以通过llvm::LoadInst和llvm::StoreInst实现，也可以借助IRBuilder的CreateLoad和CreateStore实现。
+
+- llvm::Type表示类型类，LLVM支持17种数据类型，可以通过Type ID判断类型：
+
+  ```c++
+    enum TypeID {
+      // PrimitiveTypes - make sure LastPrimitiveTyID stays up to date.
+      VoidTyID = 0,    ///<  0: type with no size
+      HalfTyID,        ///<  1: 16-bit floating point type
+      FloatTyID,       ///<  2: 32-bit floating point type
+      DoubleTyID,      ///<  3: 64-bit floating point type
+      X86_FP80TyID,    ///<  4: 80-bit floating point type (X87)
+      FP128TyID,       ///<  5: 128-bit floating point type (112-bit mantissa)
+      PPC_FP128TyID,   ///<  6: 128-bit floating point type (two 64-bits, PowerPC)
+      LabelTyID,       ///<  7: Labels
+      MetadataTyID,    ///<  8: Metadata
+      X86_MMXTyID,     ///<  9: MMX vectors (64 bits, X86 specific)
+      TokenTyID,       ///< 10: Tokens
+  
+      // Derived types... see DerivedTypes.h file.
+      // Make sure FirstDerivedTyID stays up to date!
+      IntegerTyID,     ///< 11: Arbitrary bit width integers
+      FunctionTyID,    ///< 12: Functions
+      StructTyID,      ///< 13: Structures
+      ArrayTyID,       ///< 14: Arrays
+      PointerTyID,     ///< 15: Pointers
+      VectorTyID       ///< 16: SIMD 'packed' format, or other vector type
+    };
+  ```
+
+- llvm::Constant表示各种常量的基类，包括ConstantInt整形常量、ConstantFP浮点型常量、ConstantArray数组常量、ConstantStruct结构体常量等。
+
+### 3.3 IR生成
+
+#### 3.3.1 环境设计
+
+LLVM IR的生成依赖上下文环境，我们构造了CodeGenerator类来保存环境，在递归遍历AST节点的时候传递CodeGenerator的实例进行每个节点的IR生成。CodeGenerator包括的环境配置：
+
+- 静态全局的上下文变量和构造器变量
+
+```C++
+static llvm::LLVMContext TheContext;
+static llvm::IRBuilder<> TheBuilder(TheContext);
+```
+
+- 公有的模块实例、地址空间、函数栈、标签基础块表
+  - 模块实例是中间代码顶级容器，用于包含所有变量、函数和指令
+  - 地址空间是LLVM版本升级后引入的地址空间变量
+  - 函数栈用于存储函数指针的栈，用于实现静态链（函数递归调用）和动态链（变量访问）
+  - 标签基础块表记录了带标签语句的基础块用于goto跳转实现，最大支持10000条带标签基础块
+
+```C++
+std::unique_ptr<llvm::Module> TheModule;
+unsigned int TheAddrSpace;
+std::vector<llvm::Function*> funcStack;
+llvm::BasicBlock* labelBlock[10000];
+```
+
+- 符号表：
+
+#### 3.3.2 类型系统
+
+从AST节点的类型映射到LLVM IR类型可以直接利用LLVM的Type类实现，但IRBuilder提供了基于上下文的更为方便的创建方式，我们使用IRBuilder来构造变量类型：
+
+```C++
+llvm::Type* AstType::toLLVMType()
+{
+    switch (this->type)
+    {
+        case SPL_ARRAY:
+            if (this->arrayType->range->type == SPL_CONST_RANGE)
+            {
+                return llvm::ArrayType::get(this->arrayType->type->toLLVMType(), this->arrayType->range->constRangeType->size());
+            }
+            else
+            {
+                return llvm::ArrayType::get(this->arrayType->type->toLLVMType(), this->arrayType->range->enumRangeType->size());
+            }
+        case SPL_CONST_RANGE: return TheBuilder.getInt32Ty();
+        case SPL_ENUM_RANGE: return TheBuilder.getInt32Ty();
+        case SPL_BUILD_IN:
+            switch (buildInType)
+            {
+                case SPL_INTEGER: return TheBuilder.getInt32Ty();
+                case SPL_REAL: return TheBuilder.getDoubleTy();
+                case SPL_CHAR: return TheBuilder.getInt8Ty();
+                case SPL_BOOLEAN: return TheBuilder.getInt1Ty();
+            }
+            break;
+        case SPL_ENUM:
+        case SPL_RECORD:
+        case SPL_USER_DEFINE:
+        case SPL_VOID: return TheBuilder.getVoidTy();
+    }
+}
+```
+
+其中：
+
+- 内置类型Int，Char，Bool分别使用32、8、1位的Int类型
+
+- Real使用Double类型
+- Range使用32位Int类型
+- Void对应Void类型
+- 数组类型需要先构造数组元素类型和确定数组大小，分为常量范围数组和变量范围数组。
+
+为了实现引用传递，引入指针类型（仅支持内置类型指针）：
+
+```C++
+llvm::Type* toLLVMPtrType(const BuildInType & type)
+{
+    switch (type)
+    {
+        case SPL_INTEGER: return llvm::Type::getInt32PtrTy(TheContext);
+        case SPL_REAL: return llvm::Type::getDoublePtrTy(TheContext);
+        case SPL_CHAR: return llvm::Type::getInt8PtrTy(TheContext);
+        case SPL_BOOLEAN: return llvm::Type::getInt1PtrTy(TheContext);
+        default: throw logic_error("Not supported pointer type.");
+    }
+}
+```
+
+#### 3.3.3 常量获取
+
+可以直接通过IRBuilder获取llvm::Constant：
+
+```C++
+llvm::Value *Integer::codeGen(CodeGenerator & generator) {
+//    LOG_I("Integer");
+    return TheBuilder.getInt32(this->value);
+}
+
+llvm::Value *Char::codeGen(CodeGenerator & generator) {
+//    LOG_I("Char");
+    return TheBuilder.getInt8(this->value);
+}
+
+llvm::Value *Real::codeGen(CodeGenerator & generator) {
+    //LOG_I("Real");
+//    return llvm::ConstantFP::get(TheContext, llvm::APFloat(this->value));
+    return llvm::ConstantFP::get(TheBuilder.getDoubleTy(), this->value);
+}
+
+llvm::Value *Boolean::codeGen(CodeGenerator & generator) {
+    //LOG_I("Boolean");
+    return TheBuilder.getInt1(this->value);
+}
+```
+
+#### 3.3.4 变量创建和存取
+
+LLVM中可以依赖函数和基础块上下文创建局部变量并通过传递一个llvm::StringRef值指定变量名称：
+
+```C++
+llvm::AllocaInst *CreateEntryBlockAlloca(llvm::Function *TheFunction, llvm::StringRef VarName, llvm::Type* type)
+{
+  llvm::IRBuilder<> TmpB(&TheFunction->getEntryBlock(), TheFunction->getEntryBlock().begin());
+  return TmpB.CreateAlloca(type, nullptr, VarName);
+}
+```
+
+- 访问变量值：llvm::LoadInst或者IRBuilder的CreateLoad实现
+- 存储变量值：llvm::StoreInst或者IRBuilder的StoreLoad实现
+
+基于变量取值、函数栈以及LLVM函数的符号表
+
+#### 3.3.5
+
+#### 3.3.6
+
+#### 3.3.7
+
+#### 3.3.8
+
+#### 3.3.9
+
+#### 3.3.10
 
 ## 第四章 优化考虑
 
@@ -579,4 +973,633 @@ private:
 
 ## 第六章 测试案例
 
-（每个语句成分的测试案例，至少两个复杂语句组合后的测试案例）
+### 6.1 数据类型测试
+
+#### 6.1.1 内置类型测试
+
+- 测试代码
+
+```pascal
+
+```
+
+- IR
+- 汇编指令
+- 运行结果
+
+#### 6.1.2 数组类型测试
+
+- 测试代码
+
+```pascal
+
+```
+
+- IR
+- 汇编指令
+- 运行结果
+
+### 6.2 运算测试
+
+- 测试代码
+
+```pascal
+
+```
+
+- IR
+- 汇编指令
+- 运行结果
+
+### 6.3 控制流测试
+
+#### 6.3.1 分支测试
+
+- 测试代码
+
+```pascal
+
+```
+
+- IR
+- 汇编指令
+- 运行结果
+
+#### 6.3.2 循环测试
+
+- 测试代码
+
+```pascal
+
+```
+
+- IR
+- 汇编指令
+- 运行结果
+
+#### 6.3.3 Goto测试
+
+- 测试代码
+
+```pascal
+
+```
+
+- IR
+- 汇编指令
+- 运行结果
+
+### 6.4 函数测试
+
+#### 6.4.1 简单函数测试
+
+- 测试代码
+
+```pascal
+
+```
+
+- IR
+- 汇编指令
+- 运行结果
+
+#### 6.4.2 递归函数测试
+
+- 测试代码
+
+```pascal
+
+```
+
+- IR
+- 汇编指令
+- 运行结果
+
+#### 6.4.3 引用传递测试
+
+- 测试代码
+
+```pascal
+
+```
+
+- IR
+- 汇编指令
+- 运行结果
+
+### 6.5 综合测试
+
+#### 6.5.1 测试用例1
+
+- 测试代码
+
+```pascal
+program hello;
+var
+	i : integer;
+
+function go(a : integer): integer;
+begin
+	if a = 1 then
+	begin
+		go := 1;
+	end
+	else
+	begin
+		if a = 2 then
+		begin
+			go := 1;
+		end
+		else
+		begin
+			go := go(a - 1) + go(a - 2);
+		end
+		;
+	end
+	;
+end
+;
+
+begin
+	i := go(10);
+	writeln(i);
+end
+.
+```
+
+- IR
+
+```c
+; ModuleID = 'main'
+source_filename = "main"
+
+@i = global i32 0
+@.str = constant [4 x i8] c"%d\0A\00"
+
+define internal void @main() {
+entrypoint:
+  %calltmp = call i32 @go(i32 10)
+  store i32 %calltmp, i32* @i
+  %tmp = load i32, i32* @i
+  %printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %tmp)
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+define internal i32 @go(i32) {
+entrypoint:
+  %go = alloca i32
+  %a = alloca i32
+  store i32 %0, i32* %a
+  %tmp = load i32, i32* %a
+  %tmpEQ = icmp eq i32 %tmp, 1
+  %ifCond = icmp ne i1 %tmpEQ, false
+  br i1 %ifCond, label %then, label %else
+
+then:                                             ; preds = %entrypoint
+  store i32 1, i32* %go
+  br label %merge
+
+else:                                             ; preds = %entrypoint
+  %tmp1 = load i32, i32* %a
+  %tmpEQ2 = icmp eq i32 %tmp1, 2
+  %ifCond3 = icmp ne i1 %tmpEQ2, false
+  br i1 %ifCond3, label %then4, label %else5
+
+merge:                                            ; preds = %merge6, %then
+  %tmp11 = load i32, i32* %go
+  ret i32 %tmp11
+
+then4:                                            ; preds = %else
+  store i32 1, i32* %go
+  br label %merge6
+
+else5:                                            ; preds = %else
+  %tmp7 = load i32, i32* %a
+  %subtmpi = sub i32 %tmp7, 1
+  %calltmp = call i32 @go(i32 %subtmpi)
+  %tmp8 = load i32, i32* %a
+  %subtmpi9 = sub i32 %tmp8, 2
+  %calltmp10 = call i32 @go(i32 %subtmpi9)
+  %addtmpi = add i32 %calltmp, %calltmp10
+  store i32 %addtmpi, i32* %go
+  br label %merge6
+
+merge6:                                           ; preds = %else5, %then4
+  br label %merge
+}
+```
+
+- 汇编指令
+
+```assembly
+	.section	__TEXT,__text,regular,pure_instructions
+	.macosx_version_min 10, 15
+	.p2align	4, 0x90         ## -- Begin function main
+_main:                                  ## @main
+	.cfi_startproc
+## %bb.0:                               ## %entrypoint
+	pushq	%rax
+	.cfi_def_cfa_offset 16
+	movl	$10, %edi
+	callq	_go
+	movl	%eax, _i(%rip)
+	leaq	_.str(%rip), %rdi
+	movl	%eax, %esi
+	xorl	%eax, %eax
+	callq	_printf
+	popq	%rax
+	retq
+	.cfi_endproc
+                                        ## -- End function
+	.p2align	4, 0x90         ## -- Begin function go
+_go:                                    ## @go
+	.cfi_startproc
+## %bb.0:                               ## %entrypoint
+	pushq	%rbx
+	.cfi_def_cfa_offset 16
+	subq	$16, %rsp
+	.cfi_def_cfa_offset 32
+	.cfi_offset %rbx, -16
+	movl	%edi, 8(%rsp)
+	cmpl	$1, %edi
+	je	LBB1_1
+## %bb.3:                               ## %else
+	cmpl	$2, 8(%rsp)
+	jne	LBB1_4
+LBB1_1:                                 ## %then
+	movl	$1, 12(%rsp)
+LBB1_2:                                 ## %merge
+	movl	12(%rsp), %eax
+	addq	$16, %rsp
+	popq	%rbx
+	retq
+LBB1_4:                                 ## %else5
+	movl	8(%rsp), %edi
+	decl	%edi
+	callq	_go
+	movl	%eax, %ebx
+	movl	8(%rsp), %edi
+	addl	$-2, %edi
+	callq	_go
+	addl	%ebx, %eax
+	movl	%eax, 12(%rsp)
+	jmp	LBB1_2
+	.cfi_endproc
+                                        ## -- End function
+	.globl	_i                      ## @i
+.zerofill __DATA,__common,_i,4,2
+	.section	__TEXT,__const
+	.globl	_.str                   ## @.str
+_.str:
+	.asciz	"%d\n"
+
+
+.subsections_via_symbols
+```
+
+- 运行结果
+
+#### 6.5.2 测试用例2
+
+- 测试代码
+
+```pascal
+program hello;
+var	
+	f : integer;
+	k : integer;
+function go(var b : integer; a : integer): integer;
+var 
+	fk : integer;
+	t : real;
+
+begin
+	if a > 0 then 
+	begin
+		go := a * go(b , a - 1);
+	end
+	else
+	begin
+		go := 1;
+	end
+	;
+	b := b + go;
+	k := k + go;
+end
+;
+
+begin
+	k := 0;
+	f := go(k , 5);
+	writeln(f);
+	writeln(k);
+end
+.
+```
+
+- IR
+
+```c
+; ModuleID = 'main'
+source_filename = "main"
+
+@f = global i32 0
+@k = global i32 0
+@.str = constant [4 x i8] c"%d\0A\00"
+@.str.1 = constant [4 x i8] c"%d\0A\00"
+
+define internal void @main() {
+entrypoint:
+  store i32 0, i32* @k
+  %calltmp = call i32 @go(i32* @k, i32 5)
+  store i32 %calltmp, i32* @f
+  %tmp = load i32, i32* @f
+  %printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %tmp)
+  %tmp1 = load i32, i32* @k
+  %printf2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i32 0, i32 0), i32 %tmp1)
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+define internal i32 @go(i32* nonnull, i32) {
+entrypoint:
+  %t = alloca double
+  %fk = alloca i32
+  %go = alloca i32
+  %a = alloca i32
+  %b = getelementptr i32, i32* %0, i32 0
+  store i32 %1, i32* %a
+  %tmp = load i32, i32* %a
+  %tmpSGT = icmp sgt i32 %tmp, 0
+  %ifCond = icmp ne i1 %tmpSGT, false
+  br i1 %ifCond, label %then, label %else
+
+then:                                             ; preds = %entrypoint
+  %tmp1 = load i32, i32* %a
+  %tmp2 = load i32, i32* %a
+  %subtmpi = sub i32 %tmp2, 1
+  %calltmp = call i32 @go(i32* %b, i32 %subtmpi)
+  %multmpi = mul i32 %tmp1, %calltmp
+  store i32 %multmpi, i32* %go
+  br label %merge
+
+else:                                             ; preds = %entrypoint
+  store i32 1, i32* %go
+  br label %merge
+
+merge:                                            ; preds = %else, %then
+  %tmp3 = load i32, i32* %b
+  %tmp4 = load i32, i32* %go
+  %addtmpi = add i32 %tmp3, %tmp4
+  store i32 %addtmpi, i32* %b
+  %tmp5 = load i32, i32* @k
+  %tmp6 = load i32, i32* %go
+  %addtmpi7 = add i32 %tmp5, %tmp6
+  store i32 %addtmpi7, i32* @k
+  %tmp8 = load i32, i32* %go
+  ret i32 %tmp8
+}
+```
+
+- 汇编指令
+
+```assembly
+	.section	__TEXT,__text,regular,pure_instructions
+	.macosx_version_min 10, 15
+	.p2align	4, 0x90         ## -- Begin function main
+_main:                                  ## @main
+	.cfi_startproc
+## %bb.0:                               ## %entrypoint
+	pushq	%rax
+	.cfi_def_cfa_offset 16
+	movl	$0, _k(%rip)
+	leaq	_k(%rip), %rdi
+	movl	$5, %esi
+	callq	_go
+	movl	%eax, _f(%rip)
+	leaq	_.str(%rip), %rdi
+	movl	%eax, %esi
+	xorl	%eax, %eax
+	callq	_printf
+	movl	_k(%rip), %esi
+	leaq	_.str.1(%rip), %rdi
+	xorl	%eax, %eax
+	callq	_printf
+	popq	%rax
+	retq
+	.cfi_endproc
+                                        ## -- End function
+	.p2align	4, 0x90         ## -- Begin function go
+_go:                                    ## @go
+	.cfi_startproc
+## %bb.0:                               ## %entrypoint
+	pushq	%r14
+	.cfi_def_cfa_offset 16
+	pushq	%rbx
+	.cfi_def_cfa_offset 24
+	subq	$24, %rsp
+	.cfi_def_cfa_offset 48
+	.cfi_offset %rbx, -24
+	.cfi_offset %r14, -16
+	movq	%rdi, %rbx
+	movl	%esi, 4(%rsp)
+	testl	%esi, %esi
+	jle	LBB1_2
+## %bb.1:                               ## %then
+	movl	4(%rsp), %r14d
+	leal	-1(%r14), %esi
+	movq	%rbx, %rdi
+	callq	_go
+	imull	%r14d, %eax
+	movl	%eax, (%rsp)
+	jmp	LBB1_3
+LBB1_2:                                 ## %else
+	movl	$1, (%rsp)
+LBB1_3:                                 ## %merge
+	movl	(%rsp), %eax
+	addl	%eax, (%rbx)
+	movl	(%rsp), %eax
+	addl	%eax, _k(%rip)
+	addq	$24, %rsp
+	popq	%rbx
+	popq	%r14
+	retq
+	.cfi_endproc
+                                        ## -- End function
+	.globl	_f                      ## @f
+.zerofill __DATA,__common,_f,4,2
+	.globl	_k                      ## @k
+.zerofill __DATA,__common,_k,4,2
+	.section	__TEXT,__const
+	.globl	_.str                   ## @.str
+_.str:
+	.asciz	"%d\n"
+
+	.globl	_.str.1                 ## @.str.1
+_.str.1:
+	.asciz	"%d\n"
+
+
+.subsections_via_symbols
+```
+
+- 运行结果
+
+#### 6.5.3 测试用例3
+
+- 测试代码
+
+```pascal
+program hello;
+var 
+	ans : integer;
+
+function gcd(a, b : integer) : integer;
+begin
+	if b = 0 then begin
+		gcd := a;
+	end
+	else begin
+		gcd := gcd(b , a mod b);
+	end
+	;
+end
+;
+
+begin
+	ans := gcd(9 , 36) * gcd(3 , 6);
+	writeln(ans);
+end
+.
+```
+
+- IR
+
+```c
+; ModuleID = 'main'
+source_filename = "main"
+
+@ans = global i32 0
+@.str = constant [4 x i8] c"%d\0A\00"
+
+define internal void @main() {
+entrypoint:
+  %calltmp = call i32 @gcd(i32 9, i32 36)
+  %calltmp1 = call i32 @gcd(i32 3, i32 6)
+  %multmpi = mul i32 %calltmp, %calltmp1
+  store i32 %multmpi, i32* @ans
+  %tmp = load i32, i32* @ans
+  %printf = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %tmp)
+  ret void
+}
+
+declare i32 @printf(i8*, ...)
+
+define internal i32 @gcd(i32, i32) {
+entrypoint:
+  %gcd = alloca i32
+  %b = alloca i32
+  %a = alloca i32
+  store i32 %0, i32* %a
+  store i32 %1, i32* %b
+  %tmp = load i32, i32* %b
+  %tmpEQ = icmp eq i32 %tmp, 0
+  %ifCond = icmp ne i1 %tmpEQ, false
+  br i1 %ifCond, label %then, label %else
+
+then:                                             ; preds = %entrypoint
+  %tmp1 = load i32, i32* %a
+  store i32 %tmp1, i32* %gcd
+  br label %merge
+
+else:                                             ; preds = %entrypoint
+  %tmp2 = load i32, i32* %b
+  %tmp3 = load i32, i32* %a
+  %tmp4 = load i32, i32* %b
+  %tmpSREM = srem i32 %tmp3, %tmp4
+  %calltmp = call i32 @gcd(i32 %tmp2, i32 %tmpSREM)
+  store i32 %calltmp, i32* %gcd
+  br label %merge
+
+merge:                                            ; preds = %else, %then
+  %tmp5 = load i32, i32* %gcd
+  ret i32 %tmp5
+}
+```
+
+- 汇编指令
+
+```assembly
+	.section	__TEXT,__text,regular,pure_instructions
+	.macosx_version_min 10, 15
+	.p2align	4, 0x90         ## -- Begin function main
+_main:                                  ## @main
+	.cfi_startproc
+## %bb.0:                               ## %entrypoint
+	pushq	%rbx
+	.cfi_def_cfa_offset 16
+	.cfi_offset %rbx, -16
+	movl	$9, %edi
+	movl	$36, %esi
+	callq	_gcd
+	movl	%eax, %ebx
+	movl	$3, %edi
+	movl	$6, %esi
+	callq	_gcd
+	imull	%ebx, %eax
+	movl	%eax, _ans(%rip)
+	leaq	_.str(%rip), %rdi
+	movl	%eax, %esi
+	xorl	%eax, %eax
+	callq	_printf
+	popq	%rbx
+	retq
+	.cfi_endproc
+                                        ## -- End function
+	.p2align	4, 0x90         ## -- Begin function gcd
+_gcd:                                   ## @gcd
+	.cfi_startproc
+## %bb.0:                               ## %entrypoint
+	subq	$24, %rsp
+	.cfi_def_cfa_offset 32
+	movl	%edi, 12(%rsp)
+	movl	%esi, 20(%rsp)
+	testl	%esi, %esi
+	jne	LBB1_2
+## %bb.1:                               ## %then
+	movl	12(%rsp), %eax
+	jmp	LBB1_3
+LBB1_2:                                 ## %else
+	movl	20(%rsp), %edi
+	movl	12(%rsp), %eax
+	cltd
+	idivl	%edi
+	movl	%edx, %esi
+	callq	_gcd
+LBB1_3:                                 ## %merge
+	movl	%eax, 16(%rsp)
+	movl	16(%rsp), %eax
+	addq	$24, %rsp
+	retq
+	.cfi_endproc
+                                        ## -- End function
+	.globl	_ans                    ## @ans
+.zerofill __DATA,__common,_ans,4,2
+	.section	__TEXT,__const
+	.globl	_.str                   ## @.str
+_.str:
+	.asciz	"%d\n"
+
+
+.subsections_via_symbols
+```
+
+- 运行结果
+
+## 第柒章 总结
+
+
+
