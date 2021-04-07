@@ -1,13 +1,13 @@
 NAME = spl
 
-LLVM_CONFIG = /usr/local/bin/llvm-config
+LLVM_CONFIG = /usr/bin/llvm-config
 
 NO_WARNING =  -Wno-return-type \
 	-Wno-c++11-compat-deprecated-writable-strings \
 	-Wno-deprecated-register \
 	-Wno-switch \
 
-CXXFLAGS = `$(LLVM_CONFIG) --cppflags` -std=c++11 $(NO_WARNING)
+CXXFLAGS = `$(LLVM_CONFIG) --cppflags` -std=c++14 $(NO_WARNING) -fpermissive 
 LDFLAGS = `$(LLVM_CONFIG) --ldflags`
 LIBS = `$(LLVM_CONFIG) --libs --system-libs`
 

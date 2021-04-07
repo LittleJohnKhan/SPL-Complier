@@ -12,7 +12,8 @@ void CodeGenerator::generate(Program& astRoot)
 //    llvm::legacy::PassManager pm;
 //    pm.add(createPrintModulePass(llvm::outs()));
 //    pm.run(*TheModule);
-    TheModule->dump();
+    // TheModule->dump();
+    TheModule->print(llvm::errs(), nullptr);
 }
 
 llvm::GenericValue CodeGenerator::run()

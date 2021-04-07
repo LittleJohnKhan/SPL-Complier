@@ -107,7 +107,7 @@ public:
         return label;
     }
     void forward(CodeGenerator & generator);
-    void backword();
+    void backward(CodeGenerator & generator);
     llvm::BasicBlock *afterBB;
 private:
     int label = -1;

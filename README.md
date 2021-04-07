@@ -12,6 +12,12 @@
 - flex 2.5.35 Apple(flex-32)
 - bison (GNU Bison) 2.3
 
+linux 环境下安装：
+```bash
+    sudo apt install llvm
+    sudo apt install flex bison 
+```
+
 ## OS
 
 - MacOS (recommend)
@@ -19,13 +25,18 @@
 
 ## 编译运行
 
+NOTE: 
+1. llvm use c++14 features, so compiling with `-std=gnu++11` won't work, please modify Makefile with `-std=g++14`.
+2. use `-fpermissive` to downgrade some diagnostics about nonconformant code from errors to warnings.
+3. change `TheModule->dump();` in SPL-Complier/CodeGenerator.cpp:15 to `module->print(llvm::errs(), nullptr);` because llvm5.0+ does not support dump anymore.
+
 ```bash
     make
-    cat ./test/test2.pas | spl
+    cat ./test/test2.pas | ./spl
 ```
 ## IR执行
 ```bash
-    cat ./test/test.pas | spl 2> spl.ll
+    cat ./test/test.pas | ./spl 2> spl.ll
     lli spl.ll
 ```
 ## DAG可视化
